@@ -8,5 +8,5 @@ data_description.txt
 docker-compose.yml
 todo.txt
 *.pyc
-jupyter.log
+*.log
 .virtual_documents/
