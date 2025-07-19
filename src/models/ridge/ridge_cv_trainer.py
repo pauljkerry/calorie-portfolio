@@ -1,24 +1,23 @@
-from cuml.linear_model import LogisticRegression
+from cuml.linear_model import Ridge
 import numpy as np
-from sklearn.model_selection import StratifiedKFold
-from sklearn.metrics import log_loss
-from sklearn.metrics import accuracy_score
+from sklearn.model_selection import KFold
+from sklearn.metrics import mean_squared_error as mse
 import shap
 import joblib
 import time
 from src.utils.print_duration import print_duration
 
 
-class LogRegCVTrainer:
+class RidgeCVTrainer:
     """
-    Logregを使ったGPUでのCVトレーナー。
+    Ridgeを使ったGPUでのCVトレーナー。
 
     Attributes
     ----------
     params : dict
-        LogRegのパラメータ。
+        Ridgeのパラメータ。
     n_splits : int, default 5
-        StratifiedKFoldの分割数。
+        KFoldの分割数。
     max_iter : int, default 1000
         最適化アルゴリズムの反復回数。
     seed : int, default 42
@@ -36,7 +35,7 @@ class LogRegCVTrainer:
 
     def get_default_params(self):
         """
-        LogReg用のデフォルトパラメータを返す。
+        Ridge用のデフォルトパラメータを返す。
 
         Returns
         -------
@@ -44,11 +43,11 @@ class LogRegCVTrainer:
             デフォルトパラメータの辞書。
         """
         default_params = {
-            "C": 1.0,
-            "penalty": "l2",
+            "alpha": 1.0,
+            "fit_intercept": True,
             "solver": "qn",
-            "max_iter": self.max_iter,
-            "class_weight": None
+            "max_iter": 1000,
+            "random_state": self.seed
         }
         return default_params
 
@@ -80,37 +79,36 @@ class LogRegCVTrainer:
         y = tr_df["target"]
 
         X_pd = X.to_pandas()
-        y_pd = y.to_pandas()
 
         default_params = self.get_default_params()
         self.params = {**default_params, **self.params}
 
-        oof_preds = np.zeros((len(X), len(np.unique(y))))
-        test_preds = np.zeros((len(test_df), len(np.unique(y))))
+        oof_preds = np.zeros(len(X))
+        test_preds = np.zeros(len(test_df))
 
-        skf = StratifiedKFold(
+        skf = KFold(
             n_splits=self.n_splits, shuffle=True
         )
 
-        for fold, (tr_idx, val_idx) in enumerate(skf.split(X_pd, y_pd)):
+        for fold, (tr_idx, val_idx) in enumerate(skf.split(X_pd)):
             print(f"\nFold {fold + 1}")
             start = time.time()
             X_tr, y_tr = X.iloc[tr_idx], y.iloc[tr_idx]
             X_val, y_val = X.iloc[val_idx], y.iloc[val_idx]
 
-            model = LogisticRegression(**self.params)
+            model = Ridge(**self.params)
             model.fit(X_tr, y_tr)
 
-            oof_preds[val_idx] = model.predict_proba(X_val)
-            test_preds += model.predict_proba(test_df)
+            oof_preds[val_idx] = model.predict(X_val)
+            test_preds += model.predict(test_df)
 
             end = time.time()
             print_duration(start, end)
 
-            score = log_loss(y_val.to_numpy(), oof_preds[val_idx])
-            print(f"Valid log_loss: {score:.5f}")
+            score = np.sqrt(mse(y_val.to_numpy(), oof_preds[val_idx]))
+            print(f"Valid RMSE: {score:.5f}")
 
-            self.fold_models.append(LogRegFoldModel(
+            self.fold_models.append(RidgeFoldModel(
                 model=model,
                 X_val=X_val,
                 y_val=y_val,
@@ -125,7 +123,7 @@ class LogRegCVTrainer:
             f"Std: {np.std(self.fold_scores):.5f}"
         )
 
-        self.oof_score = log_loss(y, oof_preds.to_numpy())
+        self.oof_score = np.sqrt(mse(y, oof_preds.to_numpy()))
         print(f"OOF score: {self.oof_score:.5f}")
 
         test_preds /= self.n_splits
@@ -166,36 +164,32 @@ class LogRegCVTrainer:
         X = tr_df.drop("target", axis=1)
         y = tr_df["target"]
 
-        X_pd = X.to_pandas()
-        y_pd = y.to_pandas()
+        X_pd = X.to_pandas()()
 
         default_params = self.get_default_params()
         self.params = {**default_params, **self.params}
 
-        skf = StratifiedKFold(
+        skf = KFold(
             n_splits=self.n_splits, shuffle=True
         )
 
         start = time.time()
-        tr_idx, va_idx = list(skf.split(X_pd, y_pd))[fold]
+        tr_idx, va_idx = list(skf.split(X_pd))[fold]
 
         X_tr, y_tr = X.iloc[tr_idx], y.iloc[tr_idx]
         X_val, y_val = X.iloc[va_idx], y.iloc[va_idx]
 
-        model = LogisticRegression(**self.params)
+        model = Ridge(**self.params)
         model.fit(X_tr, y_tr)
 
         end = time.time()
         print_duration(start, end)
 
-        preds = model.predict_proba(X_val)
-        pred_labels = model.predict(X_val)
-        logloss = log_loss(y_val.to_numpy(), preds.to_numpy())
-        acc = accuracy_score(y_val.to_numpy(), pred_labels.to_numpy())
-        print(f"Valid Log Loss: {logloss:.5f}")
-        print(f"Valid Accuracy: {acc:.5f}")
+        preds = model.predict(X_val)
+        rmse = np.sqrt(mse(y_val.to_numpy(), preds.to_numpy()))
+        print(f"Valid RMSE: {rmse:.5f}")
 
-        self.fold_models.append(LogRegFoldModel(
+        self.fold_models.append(Ridge(
             model=model,
             X_val=X_val,
             y_val=y_val,
@@ -204,14 +198,14 @@ class LogRegCVTrainer:
         self.fold_scores.append(logloss)
 
 
-class LogRegFoldModel:
+class RidgeFoldModel:
     """
-    LogRegのfold単位モデルを保持するクラス。
+    Ridgeのfold単位モデルを保持するクラス。。
 
     Attributes
     ----------
-    model : cuml.linear_model.LogisticRegression
-        学習済みのLogRegモデル。
+    model : cuml.linear_model.Ridge
+        学習済みのRidgeモデル。
     X_val : cudf.DataFrame
         検証用の特徴量データ。
     y_val : cudf.Series

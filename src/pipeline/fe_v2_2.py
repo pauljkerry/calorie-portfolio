@@ -29,7 +29,7 @@ def feature_engineering(train_data, test_data):
     -----
     - logreg用
     - 交互作用2ペア + 3ペア
-    - 残差に基づいて50% vs 50%になるように分割
+    - 残差が外れ値 or not の3値分類
     """
     # 全データを結合（train + original + test）
     all_data = pd.concat(
@@ -77,11 +77,10 @@ def feature_engineering(train_data, test_data):
 
     # === 2) targetをoofとの残差をbin分割したものにする ===
     oof = np.load("../artifacts/oof/single/oof_single_3.npy")
-    residual = np.abs(train_data["target"].values - oof)
-    threshold = np.median(residual)
+    residual = train_data["target"].values - oof
 
-    # 中央値でbin分割 (50% vs 50%)
-    residual_labels = (residual >= threshold).astype(int)
+    bins = [-np.inf, -0.1, 0.1, np.inf]
+    residual_bins = np.digitize(residual, bins[1:])
 
     # === 3) 数値変数を標準化
     num_df3 = pd.concat([inter_df, num_df1], axis=1)
@@ -103,7 +102,7 @@ def feature_engineering(train_data, test_data):
     test_df = df_feat.iloc[len(train_data):]
 
     # === target と weight を追加 ===
-    tr_df["target"] = residual_labels
+    tr_df["target"] = residual_bins
     tr_df["weight"] = 1
 
     return tr_df, test_df

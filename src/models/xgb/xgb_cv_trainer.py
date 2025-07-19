@@ -123,7 +123,7 @@ class XGBCVTrainer:
             random_state=self.seed
         )
 
-        for fold, (tr_idx, val_idx) in enumerate(kf.split(X, y)):
+        for fold, (tr_idx, val_idx) in enumerate(kf.split(X)):
             print(f"\nFold {fold + 1}")
             start = time.time()
 
@@ -319,7 +319,7 @@ class XGBCVTrainer:
             n_splits=self.n_splits, shuffle=True, random_state=42
         )
 
-        tr_idx, val_idx = list(kf.split(X, y))[fold]
+        tr_idx, val_idx = list(kf.split(X))[fold]
         start = time.time()
 
         X_tr, y_tr, w_tr = X.iloc[tr_idx], y.iloc[tr_idx], weights.iloc[tr_idx]

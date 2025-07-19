@@ -29,7 +29,7 @@ def feature_engineering(train_data, test_data):
     -----
     - logreg用
     - 交互作用2ペア + 3ペア
-    - 残差が外れ値 or not の2値分類
+    - 33:33:33で分割
     """
     # 全データを結合（train + original + test）
     all_data = pd.concat(
@@ -78,7 +78,13 @@ def feature_engineering(train_data, test_data):
     # === 2) targetをoofとの残差をbin分割したものにする ===
     oof = np.load("../artifacts/oof/single/oof_single_3.npy")
     residual = np.abs(train_data["target"].values - oof)
-    residual_labels = (residual >= 0.1).astype(int)
+
+    # 3分位で分割する閾値（1/3, 2/3点）
+    threshold1 = np.quantile(residual, 1/3)
+    threshold2 = np.quantile(residual, 2/3)
+
+    # 分類ラベルを割り当て
+    residual_labels = np.digitize(residual, bins=[threshold1, threshold2])
 
     # === 3) 数値変数を標準化
     num_df3 = pd.concat([inter_df, num_df1], axis=1)

@@ -28,8 +28,8 @@ def feature_engineering(train_data, test_data):
     Notes
     -----
     - logreg用
-    - 交互作用2ペア + 3ペア
-    - 残差に基づいて50% vs 50%になるように分割
+    - 交互作用2ペア
+    - 残差が外れ値 or not の3値分類
     """
     # 全データを結合（train + original + test）
     all_data = pd.concat(
@@ -54,8 +54,6 @@ def feature_engineering(train_data, test_data):
 
     # === 2) 交互作用を追加
     inter_df = pd.DataFrame(index=all_data.index)
-    inter_df2 = pd.DataFrame(index=all_data.index)
-    inter_df3 = pd.DataFrame(index=all_data.index)
     num_df1 = all_data.select_dtypes(
         include=np.number
     ).drop("target", axis=1)
@@ -65,23 +63,14 @@ def feature_engineering(train_data, test_data):
         if "Sex" in col1 and "Sex" in col2:
             continue
         col_name = f"{col1}_{col2}"
-        inter_df2[col_name] = num_df2[col1] * num_df2[col2]
-
-    for col1, col2, col3 in combinations(num_df2.columns, 3):
-        if "Sex" in col1 and "Sex" in col2:
-            continue
-        col_name = f"{col1}_{col2}_{col3}"
-        inter_df3[col_name] = num_df2[col1] * num_df2[col2]
-
-    inter_df = pd.concat([inter_df2, inter_df3], axis=1)
+        inter_df[col_name] = num_df2[col1] * num_df2[col2]
 
     # === 2) targetをoofとの残差をbin分割したものにする ===
     oof = np.load("../artifacts/oof/single/oof_single_3.npy")
-    residual = np.abs(train_data["target"].values - oof)
-    threshold = np.median(residual)
+    residual = train_data["target"].values - oof
 
-    # 中央値でbin分割 (50% vs 50%)
-    residual_labels = (residual >= threshold).astype(int)
+    bins = [-np.inf, -0.1, 0.1, np.inf]
+    residual_bins = np.digitize(residual, bins[1:])
 
     # === 3) 数値変数を標準化
     num_df3 = pd.concat([inter_df, num_df1], axis=1)
@@ -103,7 +92,7 @@ def feature_engineering(train_data, test_data):
     test_df = df_feat.iloc[len(train_data):]
 
     # === target と weight を追加 ===
-    tr_df["target"] = residual_labels
+    tr_df["target"] = residual_bins
     tr_df["weight"] = 1
 
     return tr_df, test_df

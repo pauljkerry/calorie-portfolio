@@ -177,7 +177,13 @@ def plot_numerical_distribution(df, cols=None, bins=30):
     plt.tight_layout()
     plt.show()
 
+    cols_order = [
+        "count", "mean", "std",
+        "min", "1%", "5%", "10%", "25%", "50%",
+        "75%", "90%", "95%", "99%", "max"
+    ]
     summary_df = pd.DataFrame(stats_dict).T
+    summary_df = summary_df[cols_order]
     display(summary_df)
 
 

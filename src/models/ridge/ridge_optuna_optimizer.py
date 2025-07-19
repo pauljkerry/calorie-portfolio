@@ -1,5 +1,5 @@
 import optuna
-from src.models.logreg.logreg_cv_trainer import LogRegCVTrainer
+from src.models.ridge.ridge_cv_trainer import RidgeCVTrainer
 
 
 def create_objective(tr_df, n_splits=5):
@@ -20,10 +20,10 @@ def create_objective(tr_df, n_splits=5):
     """
     def objective(trial):
         params = {
-            "C": trial.suggest_float("C", 1e-2, 1e2, log=True)
+            "alpha": trial.suggest_float("alpha", 1e-2, 1e2, log=True)
         }
 
-        trainer = LogRegCVTrainer(
+        trainer = RidgeCVTrainer(
             params=params,
             n_splits=n_splits
         )
@@ -35,7 +35,7 @@ def create_objective(tr_df, n_splits=5):
 
 
 def run_optuna_search(
-    objective, n_trials=50, study_name="logreg_study",
+    objective, n_trials=50, study_name="ridge_study",
     storage=None, initial_params: dict = None, sampler=None
 ):
     """
