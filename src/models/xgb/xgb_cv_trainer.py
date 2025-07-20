@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import joblib
 import time
+from src.utils.print_duration import print_duration
 
 
 class XGBCVTrainer:
@@ -159,14 +160,7 @@ class XGBCVTrainer:
             test_preds += model.predict(dtest)
 
             end = time.time()
-            duration = end - start
-            hours, rem = divmod(duration, 3600)
-            minutes, seconds = divmod(rem, 60)
-            print(
-                f"Training time: "
-                f"{int(hours):02d}:"
-                f"{int(minutes):02d}:"
-                f"{int(seconds):02d}")
+            print_duration(start, end)
 
             best_iter = model.best_iteration
             train_score = evals_result["train"]["rmse"][best_iter]
@@ -250,14 +244,7 @@ class XGBCVTrainer:
         )
 
         end = time.time()
-        duration = end - start
-        hours, rem = divmod(duration, 3600)
-        minutes, seconds = divmod(rem, 60)
-        print(
-            f"Training time: "
-            f"{int(hours):02d}:"
-            f"{int(minutes):02d}:"
-            f"{int(seconds):02d}")
+        print_duration(start, end)
 
         self.fold_models.append(XGBFoldModel(
             model, None, None, None, None, None))
@@ -342,16 +329,8 @@ class XGBCVTrainer:
         )
 
         end = time.time()
-        duration = end - start
+        print_duration(start, end)
 
-        hours, rem = divmod(duration, 3600)
-        minutes, seconds = divmod(rem, 60)
-        print(
-            f"Training time: "
-            f"{int(hours):02d}:"
-            f"{int(minutes):02d}:"
-            f"{int(seconds):02d}"
-        )
         best_iter = model.best_iteration
         train_score = evals_result["train"]["rmse"][best_iter]
         eval_score = evals_result["eval"]["rmse"][best_iter]

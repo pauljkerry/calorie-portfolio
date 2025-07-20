@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import joblib
 import time
+from src.utils.print_duration import print_duration
 
 
 class LGBMCVTrainer:
@@ -157,15 +158,7 @@ class LGBMCVTrainer:
             test_preds += model.predict(test_df)
 
             end = time.time()
-            duration = end - start
-            hours, rem = divmod(duration, 3600)
-            minutes, seconds = divmod(rem, 60)
-            print(
-                f"Training time: "
-                f"{int(hours):02d}:"
-                f"{int(minutes):02d}:"
-                f"{int(seconds):02d}"
-            )
+            print_duration(start, end)
 
             best_iter = model.best_iteration
             train_score = evals_result["train"]["rmse"][best_iter-1]
@@ -348,16 +341,8 @@ class LGBMCVTrainer:
         )
 
         end = time.time()
-        duration = end - start
+        print_duration(start, end)
 
-        hours, rem = divmod(duration, 3600)
-        minutes, seconds = divmod(rem, 60)
-        print(
-            f"Training time: "
-            f"{int(hours):02d}:"
-            f"{int(minutes):02d}:"
-            f"{int(seconds):02d}"
-        )
         best_iter = model.best_iteration
         train_score = evals_result["train"]["rmse"][best_iter-1]
         eval_score = evals_result["eval"]["rmse"][best_iter-1]

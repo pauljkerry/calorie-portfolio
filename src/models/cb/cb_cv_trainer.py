@@ -1,6 +1,5 @@
 from catboost import CatBoostClassifier, Pool
 from sklearn.model_selection import StratifiedKFold
-from src.utils.map_k import map_k
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -29,8 +28,6 @@ class CBCVTrainer:
             "learning_rate": 0.1,
             "depth": 6,
             "iterations": 5000,
-            # "rsm": 0.8,
-            # "subsample": 0.8,
             "min_data_in_leaf": 1,
             "l2_leaf_reg": 3.0,
             "bagging_temperature": 1,

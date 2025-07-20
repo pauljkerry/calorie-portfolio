@@ -3,7 +3,6 @@ import numpy as np
 from sklearn.model_selection import KFold
 from sklearn.metrics import mean_squared_error as mse
 from sklearn.metrics import r2_score
-import shap
 import joblib
 import time
 from src.utils.print_duration import print_duration
@@ -95,16 +94,19 @@ class RidgeCVTrainer:
             model = Ridge(**self.params)
             model.fit(X_tr, y_tr)
 
-            oof_preds[val_idx] = model.predict(X_val)
-            test_preds += model.predict(test_df)
+            oof_preds[val_idx] = model.predict(X_val).to_numpy()
+            test_preds += model.predict(test_df).to_numpy()
 
             end = time.time()
             print_duration(start, end)
 
-            score = np.sqrt(
-                mse(y_val.to_numpy(), oof_preds[val_idx]).to_numpy()
+            rmse = np.sqrt(
+                mse(y_val.to_numpy(), oof_preds[val_idx])
             )
-            print(f"Valid RMSE: {score:.5f}")
+            r2 = r2_score(y_val.to_numpy(), oof_preds[val_idx])
+
+            print(f"Valid RMSE: {rmse:.5f}")
+            print(f"Valid R^2: {r2:.5f}")
 
             self.fold_models.append(RidgeFoldModel(
                 model=model,
@@ -112,7 +114,7 @@ class RidgeCVTrainer:
                 y_val=y_val,
                 fold=fold,
             ))
-            self.fold_scores.append(score)
+            self.fold_scores.append(rmse)
 
         print("\n=== CV 結果 ===")
         print(f"Fold scores: {self.fold_scores}")
@@ -121,7 +123,7 @@ class RidgeCVTrainer:
             f"Std: {np.std(self.fold_scores):.5f}"
         )
 
-        self.oof_score = np.sqrt(mse(y, oof_preds.to_numpy()))
+        self.oof_score = np.sqrt(mse(y.to_numpy(), oof_preds))
         print(f"OOF score: {self.oof_score:.5f}")
 
         test_preds /= self.n_splits
@@ -186,7 +188,7 @@ class RidgeCVTrainer:
         preds = model.predict(X_val)
         rmse = np.sqrt(mse(y_val.to_numpy(), preds.to_numpy()))
         r2 = r2_score(y_val.to_numpy(), preds.to_numpy())
-        
+
         print(f"Valid RMSE: {rmse:.5f}")
         print(f"Valid R^2: {r2:.5f}")
 
@@ -220,11 +222,6 @@ class RidgeFoldModel:
         self.X_val = X_val
         self.y_val = y_val
         self.fold = fold
-
-    def shap_plot(self, sample=1000):
-        explainer = shap.Explainer(self.model, self.X_val)
-        shap_values = explainer(self.X_val[:sample])
-        shap.summary_plot(shap_values, self.X_val[:sample], max_display=100)
 
     def save_model(self, path="../artifacts/model/logreg_vn.pkl"):
         """

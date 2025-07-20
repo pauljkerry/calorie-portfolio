@@ -75,19 +75,19 @@ def feature_engineering(train_data, test_data):
 
     inter_df = pd.concat([inter_df2, inter_df3], axis=1)
 
-    # === 2) targetをoofとの残差をbin分割したものにする ===
+    # === 2) xgbの予測値を特徴量に追加
     oof = np.load("../artifacts/oof/single/oof_single_3.npy")
-    residual = np.abs(train_data["target"].values - oof)
+    test_preds = np.load("../artifacts/test_preds/single/test_single_3.npy")
+    xgb_preds = np.concatenate([oof, test_preds], axis=0)
 
-    # 3分位で分割する閾値（1/3, 2/3点）
-    threshold1 = np.quantile(residual, 1/3)
-    threshold2 = np.quantile(residual, 2/3)
-
-    # 分類ラベルを割り当て
-    residual_labels = np.digitize(residual, bins=[threshold1, threshold2])
+    xgb_preds = pd.DataFrame(
+        xgb_preds,
+        index=all_data.index,
+        columns=["xgb_preds"]
+    )
 
     # === 3) 数値変数を標準化
-    num_df3 = pd.concat([inter_df, num_df1], axis=1)
+    num_df3 = pd.concat([inter_df, num_df1, xgb_preds], axis=1)
     scaler = StandardScaler()
     scaled_array = scaler.fit_transform(num_df3)
 
@@ -105,8 +105,14 @@ def feature_engineering(train_data, test_data):
     tr_df = df_feat.iloc[:len(train_data)].copy()
     test_df = df_feat.iloc[len(train_data):]
 
-    # === target と weight を追加 ===
+    # === targetを追加(3分割) ===
+    residual = np.abs(train_data["target"].values - oof)
+
+    # 3分位で分割する閾値（1/3, 2/3点）
+    threshold1 = np.quantile(residual, 1/3)
+    threshold2 = np.quantile(residual, 2/3)
+
+    residual_labels = np.digitize(residual, bins=[threshold1, threshold2])
     tr_df["target"] = residual_labels
-    tr_df["weight"] = 1
 
     return tr_df, test_df

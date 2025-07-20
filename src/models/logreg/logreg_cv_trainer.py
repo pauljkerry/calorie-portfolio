@@ -3,7 +3,6 @@ import numpy as np
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import log_loss
 from sklearn.metrics import accuracy_score
-import shap
 import joblib
 import time
 from src.utils.print_duration import print_duration
@@ -101,14 +100,14 @@ class LogRegCVTrainer:
             model = LogisticRegression(**self.params)
             model.fit(X_tr, y_tr)
 
-            oof_preds[val_idx] = model.predict_proba(X_val)
-            test_preds += model.predict_proba(test_df)
+            oof_preds[val_idx] = model.predict_proba(X_val).to_numpy()
+            test_preds += model.predict_proba(test_df).to_numpy()
 
             end = time.time()
             print_duration(start, end)
 
-            score = log_loss(y_val.to_numpy(), oof_preds[val_idx])
-            print(f"Valid log_loss: {score:.5f}")
+            logloss = log_loss(y_val.to_numpy(), oof_preds[val_idx])
+            print(f"Valid log_loss: {logloss:.5f}")
 
             self.fold_models.append(LogRegFoldModel(
                 model=model,
@@ -116,16 +115,15 @@ class LogRegCVTrainer:
                 y_val=y_val,
                 fold=fold,
             ))
-            self.fold_scores.append(score)
+            self.fold_scores.append(logloss)
 
+        self.oof_score = log_loss(y.to_numpy(), oof_preds)
         print("\n=== CV 結果 ===")
         print(f"Fold scores: {self.fold_scores}")
         print(
             f"Mean: {np.mean(self.fold_scores):.5f}, "
             f"Std: {np.std(self.fold_scores):.5f}"
         )
-
-        self.oof_score = log_loss(y, oof_preds.to_numpy())
         print(f"OOF score: {self.oof_score:.5f}")
 
         test_preds /= self.n_splits
@@ -225,11 +223,6 @@ class LogRegFoldModel:
         self.X_val = X_val
         self.y_val = y_val
         self.fold = fold
-
-    def shap_plot(self, sample=1000):
-        explainer = shap.Explainer(self.model, self.X_val)
-        shap_values = explainer(self.X_val[:sample])
-        shap.summary_plot(shap_values, self.X_val[:sample], max_display=100)
 
     def save_model(self, path="../artifacts/model/logreg_vn.pkl"):
         """
