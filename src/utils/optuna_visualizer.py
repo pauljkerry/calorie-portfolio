@@ -23,15 +23,9 @@ class OptunaVisualizer:
             storage=storage_path
         )
 
-    def visualize_optimization(self, top_k=30):
+    def visualize_optimization(self):
         """
         探索結果を可視化する関数。
-        低すぎるスコアを除外してから描画。
-
-        Parameters
-        ----------
-        top_k : int, default 30
-            一部のスコアの高い結果のみを表示
 
         Notes
         -----
@@ -39,33 +33,16 @@ class OptunaVisualizer:
         - 最適化履歴
         - パラメータの相互関係
         """
-        df_trials = self.study.trials_dataframe()
-
-        # スコアが小さい順にソート（direction=minimize前提）
-        sorted_trials = df_trials.sort_values('value')
-
-        # top_k件のtrial番号を取得
-        valid_trial_numbers = sorted_trials.iloc[:top_k]['number'].tolist()
-
-        # フィルタ済みのstudyを作成（フィルタ済みtrialだけで再構築）
-        filtered_study = optuna.create_study(
-            direction=self.study.direction,
-            study_name="filtered_top30"
-        )
-        for trial in self.study.trials:
-            if trial.number in valid_trial_numbers:
-                filtered_study.add_trial(trial)
-
         # パラメータ重要度
-        fig1 = vis.plot_param_importances(filtered_study)
+        fig1 = vis.plot_param_importances(self.study)
         fig1.show()
 
         # 最適化履歴
-        fig2 = vis.plot_optimization_history(filtered_study)
+        fig2 = vis.plot_optimization_history(self.study)
         fig2.show()
 
         # パラメータの相互依存関係
-        fig3 = vis.plot_parallel_coordinate(filtered_study)
+        fig3 = vis.plot_parallel_coordinate(self.study)
         fig3.show()
 
     def print_trials_table(self, top_k=10):

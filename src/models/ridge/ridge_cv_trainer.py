@@ -2,6 +2,7 @@ from cuml.linear_model import Ridge
 import numpy as np
 from sklearn.model_selection import KFold
 from sklearn.metrics import mean_squared_error as mse
+from sklearn.metrics import r2_score
 import shap
 import joblib
 import time
@@ -18,16 +19,13 @@ class RidgeCVTrainer:
         Ridgeのパラメータ。
     n_splits : int, default 5
         KFoldの分割数。
-    max_iter : int, default 1000
-        最適化アルゴリズムの反復回数。
     seed : int, default 42
         乱数シード。
     """
 
-    def __init__(self, params=None, n_splits=5, max_iter=1000, seed=42):
+    def __init__(self, params=None, n_splits=5, seed=42):
         self.params = params or {}
         self.n_splits = n_splits
-        self.max_iter = max_iter
         self.fold_models = []
         self.fold_scores = []
         self.seed = seed
@@ -45,9 +43,7 @@ class RidgeCVTrainer:
         default_params = {
             "alpha": 1.0,
             "fit_intercept": True,
-            "solver": "qn",
-            "max_iter": 1000,
-            "random_state": self.seed
+            # "solver": "qn"
         }
         return default_params
 
@@ -105,7 +101,9 @@ class RidgeCVTrainer:
             end = time.time()
             print_duration(start, end)
 
-            score = np.sqrt(mse(y_val.to_numpy(), oof_preds[val_idx]))
+            score = np.sqrt(
+                mse(y_val.to_numpy(), oof_preds[val_idx]).to_numpy()
+            )
             print(f"Valid RMSE: {score:.5f}")
 
             self.fold_models.append(RidgeFoldModel(
@@ -144,7 +142,7 @@ class RidgeCVTrainer:
         best_index = int(np.argmax(self.fold_scores))
         return best_index, self.fold_scores[best_index]
 
-    def fit_one_fold(self, tr_df, fold=0, sample_weights=None):
+    def fit_one_fold(self, tr_df, fold=0):
         """
         指定した1つのfoldのみを用いてモデルを学習する。
         主にOptunaによるハイパーパラメータ探索時に使用。
@@ -164,7 +162,7 @@ class RidgeCVTrainer:
         X = tr_df.drop("target", axis=1)
         y = tr_df["target"]
 
-        X_pd = X.to_pandas()()
+        X_pd = X.to_pandas()
 
         default_params = self.get_default_params()
         self.params = {**default_params, **self.params}
@@ -187,15 +185,18 @@ class RidgeCVTrainer:
 
         preds = model.predict(X_val)
         rmse = np.sqrt(mse(y_val.to_numpy(), preds.to_numpy()))
+        r2 = r2_score(y_val.to_numpy(), preds.to_numpy())
+        
         print(f"Valid RMSE: {rmse:.5f}")
+        print(f"Valid R^2: {r2:.5f}")
 
-        self.fold_models.append(Ridge(
+        self.fold_models.append(RidgeFoldModel(
             model=model,
             X_val=X_val,
             y_val=y_val,
             fold=fold,
         ))
-        self.fold_scores.append(logloss)
+        self.fold_scores.append(rmse)
 
 
 class RidgeFoldModel:

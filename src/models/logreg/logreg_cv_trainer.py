@@ -146,7 +146,7 @@ class LogRegCVTrainer:
         best_index = int(np.argmax(self.fold_scores))
         return best_index, self.fold_scores[best_index]
 
-    def fit_one_fold(self, tr_df, fold=0, sample_weights=None):
+    def fit_one_fold(self, tr_df, fold=0):
         """
         指定した1つのfoldのみを用いてモデルを学習する。
         主にOptunaによるハイパーパラメータ探索時に使用。
