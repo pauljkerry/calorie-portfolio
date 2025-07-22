@@ -7,7 +7,7 @@ import numpy as np
 
 
 def ensemble_with_seeds(
-    tr_df, test_df, params, cat_cols, seeds, ID, n_splits=5
+    tr_df, test_df, params, seeds, ID, n_splits=5
 ):
     """
     複数の乱数シードを用いたアンサンブル学習を実行する関数。
@@ -20,8 +20,6 @@ def ensemble_with_seeds(
         テスト用データ。
     params : dict
         ハイパーパラメータ。
-    cat_cols : list
-        カテゴリ変数名のリスト。
     seeds : list
         使用する乱数シードのリスト。
     ID : str
@@ -46,8 +44,7 @@ def ensemble_with_seeds(
 
     for i, seed in enumerate(seeds):
         trainer = LGBMCVTrainer(
-            params=params, n_splits=n_splits, seed=seed,
-            cat_cols=cat_cols)
+            params=params, n_splits=n_splits, seed=seed)
         oof_preds, test_preds = trainer.fit(
             tr_df.copy(), test_df.copy())
 

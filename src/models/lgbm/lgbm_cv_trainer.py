@@ -25,13 +25,10 @@ class LGBMCVTrainer:
         早期停止ラウンド数。
     seed : int, default 42 
         乱数シード。
-    cat_cols : list, default None
-        カテゴリ変数のカラム名リスト。
     """
 
     def __init__(self, params=None, n_splits=5,
-                 early_stopping_rounds=100, seed=42,
-                 cat_cols=None):
+                 early_stopping_rounds=100, seed=42):
         self.params = params or {}
         self.n_splits = n_splits
         self.early_stopping_rounds = early_stopping_rounds
@@ -39,7 +36,6 @@ class LGBMCVTrainer:
         self.fold_scores = []
         self.seed = seed
         self.oof_score = None
-        self.cat_cols = cat_cols or []
 
     def get_default_params(self):
         """
@@ -102,11 +98,15 @@ class LGBMCVTrainer:
         X = tr_df.drop("target", axis=1)
         y = tr_df["target"]
 
+        cat_cols = tr_df.select_dtypes(include="object").columns
+        tr_df[cat_cols] = tr_df[cat_cols].astype("category")
+        test_df[cat_cols] = test_df[cat_cols].astype("category")
+
         default_params = self.get_default_params()
         self.params = {**default_params, **self.params}
 
         valid_cat = [
-            col for col in self.cat_cols
+            col for col in cat_cols
             if col in tr_df.columns
         ]
 
@@ -167,7 +167,7 @@ class LGBMCVTrainer:
             print(f"Valid rmse: {eval_score:.5f}")
 
             self.fold_models.append(LGBMFoldModel(
-                model, X_val, y_val, evals_result, fold))
+                model, X_val, y_val, fold))
             self.fold_scores.append(eval_score)
 
         print("\n=== CV 結果 ===")
@@ -201,6 +201,10 @@ class LGBMCVTrainer:
         tr_df = tr_df.copy()
         test_df = test_df.copy()
 
+        cat_cols = tr_df.select_dtypes(include="object").columns
+        tr_df[cat_cols] = tr_df[cat_cols].astype("category")
+        test_df[cat_cols] = test_df[cat_cols].astype("category")
+
         if "weight" in tr_df.columns:
             weights = tr_df["weight"].astype("float32")
             tr_df = tr_df.drop("weight", axis=1)
@@ -217,7 +221,7 @@ class LGBMCVTrainer:
         self.params = {**default_params, **self.params}
 
         valid_categorical = [
-            col for col in self.cat_cols
+            col for col in cat_cols
             if col in tr_df.columns
         ]
 
@@ -237,18 +241,7 @@ class LGBMCVTrainer:
         )
 
         end = time.time()
-        duration = end - start
-        hours, rem = divmod(duration, 3600)
-        minutes, seconds = divmod(rem, 60)
-        print(
-            f"Training time: "
-            f"{int(hours):02d}:"
-            f"{int(minutes):02d}:"
-            f"{int(seconds):02d}"
-        )
-
-        self.fold_models.append(LGBMFoldModel(
-            model, None, None, None, None))
+        print_duration(start, end)
 
         # test_dfの予測値
         test_preds = model.predict(test_df.to_numpy())
@@ -262,17 +255,15 @@ class LGBMCVTrainer:
 
     def get_best_fold(self):
         """
-        最もスコアの高かったfoldのインデックスとそのスコアを返す。
+        最もスコアの高かったfoldのインデックスを返す。
 
         Returns
         -------
         best_index: int
             ベストスコアのfoldのインデックス。
-        self.fold_scores[best_index] : float
-            スコア。
         """
         best_index = int(np.argmax(self.fold_scores))
-        return best_index, self.fold_scores[best_index]
+        return best_index
 
     def fit_one_fold(self, tr_df, fold=0):
         """
@@ -287,6 +278,8 @@ class LGBMCVTrainer:
             学習に使うfold番号。
         """
         tr_df = tr_df.copy()
+        cat_cols = tr_df.select_dtypes(include="object").columns
+        tr_df[cat_cols] = tr_df[cat_cols].astype("category")
 
         if "weight" in tr_df.columns:
             weights = tr_df["weight"].astype("float32")
@@ -308,7 +301,7 @@ class LGBMCVTrainer:
         self.params = {**default_params, **self.params}
 
         valid_categorical = [
-            col for col in self.cat_cols
+            col for col in cat_cols
             if col in X.columns
         ]
 
@@ -350,9 +343,7 @@ class LGBMCVTrainer:
         print(f"Valid rmse: {eval_score:.5f}")
 
         self.fold_models.append(
-            LGBMFoldModel(
-                model, X_val, y_val, evals_result, fold
-            ))
+            LGBMFoldModel(model, X_val, y_val, fold))
         self.fold_scores.append(eval_score)
 
 
@@ -372,15 +363,12 @@ class LGBMFoldModel:
         学習過程の評価結果。
     fold_index : int
         Foldの番号。
-    cat_cols : list
-        カテゴリ変数のカラム名リスト。
     """
 
-    def __init__(self, model, X_val, y_val, evals_result, fold_index):
+    def __init__(self, model, X_val, y_val, fold_index):
         self.model = model
         self.X_val = X_val
         self.y_val = y_val
-        self.evals_result = evals_result
         self.fold_index = fold_index
 
     def shap_plot(self, sample=1000):
@@ -434,30 +422,6 @@ class LGBMFoldModel:
         ax.tick_params(axis="y", labelsize=20)
 
         plt.tight_layout()
-
-    def plot_learning_curve(self):
-        """
-        学習曲線（Train・Validation の mlogloss）を可視化する。
-        """
-        train_metric = self.evals_result["train"]["mlogloss"]
-        valid_metric = self.evals_result["eval"]["mlogloss"]
-
-        fig, ax = plt.subplots(figsize=(12, 8))
-
-        sns.lineplot(
-            x=range(len(train_metric)),
-            y=train_metric, label="train", ax=ax
-        )
-        sns.lineplot(
-            x=range(len(valid_metric)),
-            y=valid_metric, label="valid", ax=ax
-        )
-
-        ax.set_xlabel("Iteration")
-        ax.set_ylabel("mlogloss")
-        ax.set_title("Learning Curve")
-        ax.legend()
-        plt.show()
 
     def save_model(self, path="../artifacts/model/lgbm_vn.pkl"):
         """

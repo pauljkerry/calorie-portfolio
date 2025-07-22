@@ -132,17 +132,15 @@ class LogRegCVTrainer:
 
     def get_best_fold(self):
         """
-        最もスコアの高かったfoldのインデックスとそのスコアを返す。
+        最もスコアの高かったfoldのインデックスを返す。
 
         Returns
         -------
         best_index: int
             ベストスコアのfoldのインデックス。
-        self.fold_scores[best_index] : float
-            スコア。
         """
         best_index = int(np.argmax(self.fold_scores))
-        return best_index, self.fold_scores[best_index]
+        return best_index
 
     def fit_one_fold(self, tr_df, fold=0):
         """

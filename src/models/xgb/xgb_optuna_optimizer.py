@@ -8,7 +8,6 @@ def create_objective(
     early_stopping_rounds=200,
     n_jobs=1,
     tree_method="gpu_hist",
-    cat_cols=None
 ):
     """
     Optunaの目的関数（objective）を生成する関数。
@@ -25,8 +24,6 @@ def create_objective(
         xgb並列数。
     tree_mehod: str, default "gpu_hist"
         使用するtree_method。
-    cat_cols : list, default None
-        カテゴリ変数名のリスト。
 
     Returns
     -------
@@ -52,14 +49,13 @@ def create_objective(
 
         trainer = XGBCVTrainer(
             params=params, n_splits=n_splits,
-            early_stopping_rounds=early_stopping_rounds,
-            cat_cols=cat_cols
+            early_stopping_rounds=early_stopping_rounds
         )
 
         trainer.fit_one_fold(tr_df, fold=0)
 
         best_iteration = trainer.fold_models[0].model.best_iteration
-        trial.set_user_attr("best_iteration", best_iteration)
+        trial.set_user_attr("best_rounds", best_iteration)
 
         return trainer.fold_scores[0]
     return objective

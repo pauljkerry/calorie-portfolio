@@ -40,6 +40,7 @@ def feature_engineering(train_data, test_data):
     for c in cat_cols:
         le = LabelEncoder()
         cat_le_df[c] = le.fit_transform(all_data[c])
+    cat_le_df = cat_le_df.astype("object")
 
     # === 2) xgbの予測値を特徴量に追加
     oof = np.load("../artifacts/oof/single/oof_single_3.npy")

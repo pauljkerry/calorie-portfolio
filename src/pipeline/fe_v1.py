@@ -25,7 +25,7 @@ def feature_engineering(train_data, test_data):
 
     Notes
     -----
-    - 
+    - 特徴量エンジニアリングはせず
     """
     # 全データを結合（train + original + test）
     all_data = pd.concat(
@@ -39,6 +39,7 @@ def feature_engineering(train_data, test_data):
     for c in cat_cols:
         le = LabelEncoder()
         cat_le_df[c] = le.fit_transform(all_data[c])
+    cat_le_df = cat_le_df.astype("category")
 
     # === dfを結合 ===
     num_df = all_data.select_dtypes(

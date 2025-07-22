@@ -7,6 +7,7 @@ import seaborn as sns
 import shap
 import joblib
 import time
+from src.utils.print_duration import print_duration
 
 
 class CBCVTrainer:
@@ -258,24 +259,10 @@ class CBCVTrainer:
         val_preds = model.predict_proba(X_val)
 
         end = time.time()
-        duration = end - start
-        hours, rem = divmod(duration, 3600)
-        minutes, seconds = divmod(rem, 60)
-        print(
-            f"Training time: "
-            f"{int(hours):02d}:"
-            f"{int(minutes):02d}:"
-            f"{int(seconds):02d}"
-        )
+        print_duration(start, end)
 
         fold_score = map_k(y_val, val_preds)
         print(f"Valid map@3: {fold_score:.5f}")
-
-        self.fold_models.append(
-            CBFoldModel(
-                model, X_val, y_val, fold
-            ))
-        self.fold_scores.append(fold_score)
 
 
 class CBFoldModel:

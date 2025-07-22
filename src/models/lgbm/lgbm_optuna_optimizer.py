@@ -7,7 +7,6 @@ def create_objective(
     tr_df,
     n_splits=5,
     early_stopping_rounds=200,
-    cat_cols=None,
     n_jobs=20
 ):
     """
@@ -21,8 +20,6 @@ def create_objective(
         CV分割数。
     early_stopping_rounds : int, default 200
         EarlyStoppingのラウンド数。
-    cat_cols : list, default None
-        カテゴリ変数名のリスト。
     n_jobs: int, default 20
         LGBM並列数。
 
@@ -58,14 +55,13 @@ def create_objective(
         trainer = LGBMCVTrainer(
             params=params,
             n_splits=n_splits,
-            early_stopping_rounds=early_stopping_rounds,
-            cat_cols=cat_cols
+            early_stopping_rounds=early_stopping_rounds
         )
 
         trainer.fit_one_fold(tr_df, fold=0)
 
         best_iteration = trainer.fold_models[0].model.best_iteration
-        trial.set_user_attr("best_iteration", best_iteration)
+        trial.set_user_attr("best_rounds", best_iteration)
 
         return trainer.fold_scores[0]
     return objective
