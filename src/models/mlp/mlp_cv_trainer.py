@@ -35,6 +35,7 @@ class SimpleMLP(nn.Module):
 
         for hidden_dim in hidden_dims:
             layers.append(nn.Linear(prev_dim, hidden_dim))
+            layers.append(nn.BatchNorm1d(hidden_dim))
             layers.append(nn.ReLU())
             layers.append(nn.Dropout(dropout_rate))
             prev_dim = hidden_dim
@@ -98,7 +99,7 @@ class MLPCVTrainer:
         self.epochs = epochs
         self.batch_size = batch_size
         self.lr = lr
-        self.early_stopping_rounds = 10
+        self.early_stopping_rounds = early_stopping_rounds
         self.device = torch.device(
             "cuda" if use_gpu and torch.cuda.is_available() else "cpu"
         )
@@ -344,6 +345,12 @@ class MLPCVTrainer:
             activation=self.activation
         ).to(self.device)
         optimizer = torch.optim.Adam(model.parameters(), lr=self.lr)
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer,
+            mode='min',
+            factor=0.5,       # 学習率を半分に
+            patience=3        # val_rmseが5エポック改善しないと減衰
+        )
         criterion = nn.MSELoss(reduction="none")
 
         best_rmse = float("inf")
@@ -375,6 +382,7 @@ class MLPCVTrainer:
                     preds.append(pred)
             val_pred = np.concatenate(preds)
             val_rmse = np.sqrt(mean_squared_error(y_val, val_pred))
+            scheduler.step(val_rmse)
 
             # train RMSE は10エポックごとにだけ計算
             if (epoch + 1) % 10 == 0 or epoch == 0:

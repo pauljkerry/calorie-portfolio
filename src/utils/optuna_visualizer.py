@@ -56,7 +56,7 @@ class OptunaVisualizer:
 
         Notes
         -----
-        - iteration数の表示
+        - best roundの表示
         - パラメータの表示
         """
         trials = [t for t in self.study.trials if t.value is not None]
@@ -65,7 +65,7 @@ class OptunaVisualizer:
         for i, t in enumerate(sorted_trials[:top_k]):
             print(f"=== Trial {t.number} ===")
             print(f"CV Score       : {t.value:.5f}")
-            print(f"Best Iteration : {t.user_attrs.get('best_iteration', 'N/A')}")
+            print(f"Best Iteration : {t.user_attrs.get('best_round', 'N/A')}")
             print("Params:")
             print("params = {")
             for i, (k, v) in enumerate(t.params.items()):

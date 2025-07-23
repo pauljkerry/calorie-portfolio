@@ -44,7 +44,7 @@ def create_objective(
         trainer.fit_one_fold(tr_df, fold=0)
 
         best_iteration = trainer.fold_models[0].model.best_iteration_
-        trial.set_user_attr("best_iteration", best_iteration)
+        trial.set_user_attr("best_round", best_iteration)
 
         return trainer.fold_scores[0]
     return objective

@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import LabelEncoder
-from itertools import combinations
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import StandardScaler
 
 
 def feature_engineering(train_data, test_data):
@@ -24,8 +24,6 @@ def feature_engineering(train_data, test_data):
 
     Notes
     -----
-    - 数値変数のカテゴリ化
-    - embedding処理
     - mlp用
     """
     # 全データを結合（train + original + test）
@@ -33,37 +31,32 @@ def feature_engineering(train_data, test_data):
         [train_data, test_data], ignore_index=True
     )
 
-    # === 1) 数値変数のカテゴリ化
+    # === 1) カテゴリー変数をone hot encoding ===
+    cat_cols = ["Sex"]
+    encoder = OneHotEncoder(drop='first', sparse_output=False)
+
+    ohe_array = encoder.fit_transform(all_data[cat_cols])
+    cat_ohe_df = pd.DataFrame(
+        ohe_array,
+        columns=encoder.get_feature_names_out(cat_cols),
+        index=all_data.index
+    )
+
+    # === 2) 数値変数を標準化
     num_df = all_data.select_dtypes(
         include=np.number
     ).drop("target", axis=1)
-    bin_df = num_df.astype("str")
-    cat_df = all_data.select_dtypes(include=["category", "object"])
-    merged_df = pd.concat([bin_df, cat_df.astype("str")], axis=1)
 
-    # === 2) 3変数交互作用を追加 ===
-    inter_df2 = pd.DataFrame(index=all_data.index)
-    inter_df3 = pd.DataFrame(index=all_data.index)
-
-    for c1, c2 in combinations(merged_df.columns, 2):
-        new_col_name = f"{c1}_{c2}"
-        inter_df2[new_col_name] = merged_df[c1] + "_" + merged_df[c2]
-
-    for c1, c2, c3 in combinations(merged_df.columns, 3):
-        new_col_name = f"{c1}_{c2}_{c3}"
-        inter_df3[new_col_name] = (merged_df[c1] + "_" + merged_df[c2] +
-                                   merged_df[c3])
-
-    inter_df = pd.concat([inter_df2, inter_df3], axis=1)
-
-    # === 3) label encoding
-    inter_le_df = pd.DataFrame(index=all_data.index)
-    for c in inter_df.columns:
-        le = LabelEncoder()
-        inter_le_df[c] = le.fit_transform(inter_df[c])
+    scaler = StandardScaler()
+    scaled_array = scaler.fit_transform(num_df)
+    num_scaled_df = pd.DataFrame(
+        scaled_array,
+        columns=num_df.columns,
+        index=all_data.index
+    )
 
     # === dfを結合 ===
-    df_feat = pd.concat([num_df, inter_le_df], axis=1)
+    df_feat = pd.concat([num_scaled_df, cat_ohe_df], axis=1)
 
     # === データを分割 ===
     tr_df = df_feat.iloc[:len(train_data)].copy()

@@ -15,8 +15,6 @@ def feature_engineering(train_data, test_data):
         前処理済みの学習用データ
     test_data : pd.DataFrame
         前処理済みのテスト用データ
-    weight : float
-        originalデータのweight
 
     Returns
     -------
@@ -100,6 +98,5 @@ def feature_engineering(train_data, test_data):
 
     # === target と weight を追加 ===
     tr_df["target"] = residual
-    tr_df["weight"] = 1
 
     return tr_df, test_df
