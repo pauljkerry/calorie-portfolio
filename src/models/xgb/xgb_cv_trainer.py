@@ -120,6 +120,8 @@ class XGBCVTrainer:
             random_state=self.seed
         )
 
+        iteration_list = []
+
         for fold, (tr_idx, val_idx) in enumerate(kf.split(X)):
             print(f"\nFold {fold + 1}")
             start = time.time()
@@ -168,6 +170,8 @@ class XGBCVTrainer:
                 XGBFoldModel(model, X_val, y_val, fold))
             self.fold_scores.append(eval_score)
 
+            iteration_list.append(best_iter)
+
         print("\n=== CV 結果 ===")
         print(f"Fold scores: {self.fold_scores}")
         print(
@@ -177,6 +181,8 @@ class XGBCVTrainer:
 
         self.oof_score = np.sqrt(mean_squared_error(y, oof_preds))
         print(f"OOF score: {self.oof_score:.5f}")
+        print(f"Avg best iteration: {np.mean(iteration_list)}")
+        print(f"Best iterations: \n{iteration_list}")
 
         test_preds /= self.n_splits
 

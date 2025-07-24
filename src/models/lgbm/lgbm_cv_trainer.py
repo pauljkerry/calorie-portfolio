@@ -105,11 +105,6 @@ class LGBMCVTrainer:
         default_params = self.get_default_params()
         self.params = {**default_params, **self.params}
 
-        valid_cat = [
-            col for col in cat_cols
-            if col in tr_df.columns
-        ]
-
         oof_preds = np.zeros(len(X))
         test_preds = np.zeros(len(test_df))
         test_df = test_df.to_numpy()
@@ -117,6 +112,8 @@ class LGBMCVTrainer:
         kf = KFold(
             n_splits=self.n_splits, shuffle=True,
             random_state=self.seed)
+
+        iteration_list = []
 
         for fold, (tr_idx, val_idx) in enumerate(kf.split(X)):
             print(f"\nFold {fold + 1}")
@@ -131,7 +128,7 @@ class LGBMCVTrainer:
 
             dtrain = lgb.Dataset(
                 X_tr, label=y_tr,
-                categorical_feature=valid_cat,
+                categorical_feature=cat_cols,
                 weight=w_tr)
 
             dvalid = lgb.Dataset(X_val, label=y_val, reference=dtrain)
@@ -170,6 +167,8 @@ class LGBMCVTrainer:
                 model, X_val, y_val, fold))
             self.fold_scores.append(eval_score)
 
+            iteration_list.append(best_iter)
+
         print("\n=== CV 結果 ===")
         print(f"Fold scores: {self.fold_scores}")
         print(
@@ -179,6 +178,8 @@ class LGBMCVTrainer:
 
         self.oof_score = np.sqrt(mean_squared_error(y, oof_preds))
         print(f"OOF score: {self.oof_score:.5f}")
+        print(f"Avg best iteration: {np.mean(iteration_list)}")
+        print(f"Best iterations: \n{iteration_list}")
 
         test_preds /= self.n_splits
 
@@ -220,16 +221,11 @@ class LGBMCVTrainer:
         default_params = self.get_default_params()
         self.params = {**default_params, **self.params}
 
-        valid_categorical = [
-            col for col in cat_cols
-            if col in tr_df.columns
-        ]
-
         start = time.time()
 
         dtrain = lgb.Dataset(
             X, label=y,
-            categorical_feature=valid_categorical,
+            categorical_feature=cat_cols,
             weight=weights)
 
         model = lgb.train(
@@ -300,11 +296,6 @@ class LGBMCVTrainer:
         default_params = self.get_default_params()
         self.params = {**default_params, **self.params}
 
-        valid_categorical = [
-            col for col in cat_cols
-            if col in X.columns
-        ]
-
         tr_idx, val_idx = list(kf.split(X))[fold]
         start = time.time()
 
@@ -313,7 +304,7 @@ class LGBMCVTrainer:
 
         dtrain = lgb.Dataset(
             X_tr, label=y_tr,
-            categorical_feature=valid_categorical,
+            categorical_feature=cat_cols,
             weight=w_tr)
 
         dvalid = lgb.Dataset(X_val, label=y_val, reference=dtrain)

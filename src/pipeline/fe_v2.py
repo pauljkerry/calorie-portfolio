@@ -33,19 +33,17 @@ def feature_engineering(train_data, test_data):
 
     # === 1) カテゴリー変数をOne hot encoding ===
     cat_cols = ["Sex"]
-    cat_all_df = pd.DataFrame(index=all_data.index)
 
-    for c in cat_cols:
-        encoder = OneHotEncoder(
-            sparse_output=False, dtype=int, handle_unknown='ignore'
-        )
-        ohe_array = encoder.fit_transform(all_data[[c]])
-        ohe_df = pd.DataFrame(
-            ohe_array,
-            columns=[f"{c}_{cat}" for cat in encoder.categories_[0]],
-            index=all_data.index
-        )
-        cat_all_df = pd.concat([cat_all_df, ohe_df], axis=1)
+    encoder = OneHotEncoder(
+        sparse_output=False, dtype=int, handle_unknown='ignore',
+        drop="first"
+    )
+    ohe_array = encoder.fit_transform(all_data[cat_cols])
+    ohe_df = pd.DataFrame(
+        ohe_array,
+        columns=encoder.get_feature_names_out(cat_cols),
+        index=all_data.index
+    )
 
     # === 2) targetをoofとの残差をbin分割したものにする ===
     oof = np.load("../artifacts/oof/single/oof_single_3.npy")
@@ -66,7 +64,7 @@ def feature_engineering(train_data, test_data):
     )
 
     # === dfを結合 ===
-    df_feat = pd.concat([scaled_df, cat_all_df], axis=1)
+    df_feat = pd.concat([scaled_df, ohe_df], axis=1)
 
     # === データを分割 ===
     tr_df = df_feat.iloc[:len(train_data)].copy()

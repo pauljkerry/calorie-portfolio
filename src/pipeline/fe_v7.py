@@ -36,19 +36,17 @@ def feature_engineering(train_data, test_data):
 
     # === 1) カテゴリー変数をOne hot encoding ===
     cat_cols = ["Sex"]
-    cat_all_df = pd.DataFrame(index=all_data.index)
 
-    for c in cat_cols:
-        encoder = OneHotEncoder(
-            sparse_output=False, dtype=int, handle_unknown='ignore'
-        )
-        ohe_array = encoder.fit_transform(all_data[[c]])
-        ohe_df = pd.DataFrame(
-            ohe_array,
-            columns=[f"{c}_{cat}" for cat in encoder.categories_[0]],
-            index=all_data.index
-        )
-        cat_all_df = pd.concat([cat_all_df, ohe_df], axis=1)
+    encoder = OneHotEncoder(
+        sparse_output=False, dtype=int, handle_unknown='ignore',
+        drop="first"
+    )
+    ohe_array = encoder.fit_transform(all_data[cat_cols])
+    ohe_df = pd.DataFrame(
+        ohe_array,
+        columns=encoder.get_feature_names_out(cat_cols),
+        index=all_data.index
+    )
 
     # === 2) 交互作用を追加
     inter_df = pd.DataFrame(index=all_data.index)
@@ -57,19 +55,15 @@ def feature_engineering(train_data, test_data):
     num_df1 = all_data.select_dtypes(
         include=np.number
     ).drop("target", axis=1)
-    num_df2 = pd.concat([cat_all_df, num_df1], axis=1)
+    num_df2 = pd.concat([ohe_df, num_df1], axis=1)
 
     for col1, col2 in combinations(num_df2.columns, 2):
-        if "Sex" in col1 and "Sex" in col2:
-            continue
         col_name = f"{col1}_{col2}"
         inter_df2[col_name] = num_df2[col1] * num_df2[col2]
 
     for col1, col2, col3 in combinations(num_df2.columns, 3):
-        if "Sex" in col1 and "Sex" in col2:
-            continue
         col_name = f"{col1}_{col2}_{col3}"
-        inter_df3[col_name] = num_df2[col1] * num_df2[col2]
+        inter_df3[col_name] = num_df2[col1] * num_df2[col2] * num_df2[col3]
 
     inter_df = pd.concat([inter_df2, inter_df3], axis=1)
 
@@ -85,7 +79,7 @@ def feature_engineering(train_data, test_data):
     # === dfを結合 ===
     df_feat = pd.concat([
         scaled_df,
-        cat_all_df
+        ohe_df
     ], axis=1)
 
     # === データを分割 ===

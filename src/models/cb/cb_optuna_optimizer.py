@@ -6,14 +6,13 @@ def create_objective(
     tr_df,
     n_splits=5,
     early_stopping_rounds=200,
-    cat_cols=None,
     n_jobs=1,
     task_type="GPU"
 ):
     def objective(trial):
         params = {
-            "learning_rate": 0.1,
-            "depth": trial.suggest_int("depth", 7, 8),
+            "learning_rate": trial.suggest_float("learning_rate", 0.02, 0.02),
+            "depth": trial.suggest_int("depth", 10, 16),
             # "rsm": trial.suggest_float("rsm", 0.2, 0.4),
             # "subsample": trial.suggest_float("subsample", 0.6, 0.95),
             "min_data_in_leaf": trial.suggest_float(
@@ -37,21 +36,17 @@ def create_objective(
         trainer = CBCVTrainer(
             params=params,
             n_splits=n_splits,
-            early_stopping_rounds=early_stopping_rounds,
-            cat_cols=cat_cols
+            early_stopping_rounds=early_stopping_rounds
         )
 
         trainer.fit_one_fold(tr_df, fold=0)
-
-        best_iteration = trainer.fold_models[0].model.best_iteration_
-        trial.set_user_attr("best_round", best_iteration)
 
         return trainer.fold_scores[0]
     return objective
 
 
 def run_optuna_search(
-    objective, n_trials=50, n_jobs=1, study_name="lgb_study", 
+    objective, n_trials=50, n_jobs=1, study_name="cb_study",
     storage=None, initial_params: dict = None, sampler=None
 ):
     study = optuna.create_study(

@@ -41,11 +41,11 @@ def create_objective(
         trainer.early_stopping_rounds = early_stopping_rounds
         trainer.use_gpu = use_gpu
         trainer.batch_size = trial.suggest_int(
-            "batch_size", 512, 1024, step=32
+            "batch_size", 800, 2048, step=32
         )
-        trainer.lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
+        trainer.lr = trial.suggest_float("lr", 1e-3, 1e-2, log=True)
         trainer.dropout_rate = round(trial.suggest_float(
-            "dropout_rate", 0.1, 0.3, step=0.01), 2)
+            "dropout_rate", 0, 0.15, step=0.01), 2)
 
         activation_str = trial.suggest_categorical(
             "activation", [activation])
@@ -56,14 +56,12 @@ def create_objective(
         }
         trainer.activation = activation_map[activation_str]()
 
-        dim1 = trial.suggest_int("hidden_dim1", 96, 512, step=32)
+        dim1 = trial.suggest_int("hidden_dim1", 96, 768, step=32)
         dim2 = trial.suggest_int("hidden_dim2", 64, dim1, step=32)
         dim3 = trial.suggest_int("hidden_dim3", 32, dim2, step=32)
         trainer.hidden_dims = [dim1, dim2, dim3]
 
         trainer.fit_one_fold(tr_df, fold=0)
-        best_rounds = trainer.fold_models[0].best_rounds
-        trial.set_user_attr("best_round", best_rounds)
 
         return trainer.fold_scores[0]
     return objective

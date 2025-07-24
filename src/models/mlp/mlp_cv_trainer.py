@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset, TensorDataset
@@ -147,6 +146,8 @@ class MLPCVTrainer:
 
         kf = KFold(n_splits=self.n_splits, shuffle=True, random_state=self.seed)
 
+        epoch_list = []
+
         for fold, (tr_idx, val_idx) in enumerate(kf.split(X)):
             print(f"\nFold {fold + 1}")
             start = time.time()
@@ -179,6 +180,12 @@ class MLPCVTrainer:
                 activation=self.activation
             ).to(self.device)
             optimizer = torch.optim.Adam(model.parameters(), lr=self.lr)
+            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+                optimizer,
+                mode='min',
+                factor=0.5,       # 学習率を半分に
+                patience=3        # val_rmseが3エポック改善しないと減衰
+            )
             criterion = nn.MSELoss(reduction="none")
 
             best_rmse = float("inf")
@@ -210,6 +217,7 @@ class MLPCVTrainer:
                         preds.append(pred)
                 val_pred = np.concatenate(preds)
                 val_rmse = np.sqrt(mean_squared_error(y_val, val_pred))
+                scheduler.step(val_rmse)
 
                 # train RMSE は10エポックごとにだけ計算
                 if (epoch + 1) % 10 == 0 or epoch == 0:
@@ -250,6 +258,8 @@ class MLPCVTrainer:
             ))
             self.fold_scores.append(best_rmse)
 
+            epoch_list.append(best_epoch)
+
             # Save OOF
             model.eval()
             with torch.no_grad():
@@ -271,6 +281,8 @@ class MLPCVTrainer:
             f"Std: {np.std(self.fold_scores):.5f}"
         )
         print(f"OOF score: {self.oof_score:.5f}")
+        print(f"Avg best epoch: {np.mean(epoch_list)}")
+        print(f"Best epochs: \n{epoch_list}")
 
         test_preds /= self.n_splits
         return oof_preds, test_preds
@@ -349,7 +361,7 @@ class MLPCVTrainer:
             optimizer,
             mode='min',
             factor=0.5,       # 学習率を半分に
-            patience=3        # val_rmseが5エポック改善しないと減衰
+            patience=3        # val_rmseが3エポック改善しないと減衰
         )
         criterion = nn.MSELoss(reduction="none")
 
