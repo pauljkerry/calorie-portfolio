@@ -30,7 +30,8 @@ def create_objective(
     """
     def objective(trial):
         params = {
-            "learning_rate": 0.1,
+            "learning_rate": trial.suggest_float(
+                "learning_rate", 0.02, 0.02),
             "max_depth": trial.suggest_int("max_depth", 5, 10),
             "num_leaves": trial.suggest_int("num_leaves", 400, 600),
             "min_child_samples": trial.suggest_int("min_child_samples",

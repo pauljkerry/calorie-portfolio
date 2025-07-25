@@ -1,50 +1,44 @@
 import numpy as np
 import pandas as pd
 import optuna
-import joblib
-from src.utils.map_k import map_k
+from sklearn.metrics import mean_squared_error
 
 
-def create_objective(oof1, oof2, oof3):
+def create_objective(oof_list):
     """
-    oofの最適な重みを探索する関数
+    oofの最適な重みを探索する目的関数を作る。
 
     Parameters
     ----------
-    oof1 : np.ndarray
-        各ラベルの予測確率をまとめた配列。
-    oof2 : np.ndarray
-        各ラベルの予測確率をまとめた配列。
-    oof3 : np.ndarray
-        各ラベルの予測確率をまとめた配列。
+    oof_list : list of np.ndarray
+        各モデルの予測値（oof）をまとめたリスト
 
     Returns
     -------
     objective : function
-        optunaで使用する目的関数。
+        optunaで使う目的関数
     """
-    label_encoder = (
-        joblib.load("../artifacts/label_encoder.pkl")
-    )
-    train_data = pd.read_csv("../artifacts/features/tr_df4.csv")
-    target = train_data["target"].to_numpy()
-    y_true = label_encoder.transform(target)
+    train_data = pd.read_parquet("../artifacts/prepro/train_data.parquet")
+    y_true = train_data["target"].to_numpy()
+    n_models = len(oof_list)
 
     def objective(trial):
-        # 3つの重みを[0, 1]でサンプリング
-        w1 = trial.suggest_float("w1", 0.0, 0.5)
-        w2 = trial.suggest_float("w2", 0.0, 0.5)
-        w3 = 1.0 - w1 - w2
+        weights = []
+        total = 0.0
 
-        if w3 < 0:
-            return -np.inf
+        for i in range(n_models - 1):
+            w = trial.suggest_float(f"w{i}", 0.0, 1.0 - total)
+            weights.append(w)
+            total += w
 
-        # アンサンブル予測の作成
-        y_pred = w1 * oof1 + w2 * oof2 + w3 * oof3
+        # 最後の1つは1から引いた残り
+        weights.append(1.0 - total)
 
-        # 評価指標の計算（できれば負方向にする）
-        score = map_k(y_true, y_pred)
-        return score
+        # 加重平均をとる
+        y_pred = sum(w * oof for w, oof in zip(weights, oof_list))
+        rmse = np.sqrt(mean_squared_error(y_true, y_pred))
+        return rmse
+
     return objective
 
 
@@ -78,7 +72,7 @@ def run_optuna_search(
         探索結果のStudyオブジェクト。
     """
     study = optuna.create_study(
-        direction="maximize",
+        direction="minimize",
         study_name=study_name,
         storage=storage,
         load_if_exists=True,

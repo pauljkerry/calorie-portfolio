@@ -24,7 +24,7 @@ def create_objective(
                 "bagging_temperature", 1e-2, 1.0
             ),
             "random_strength": trial.suggest_int(
-                "random_strength", 1, 50
+                "random_strength", 1, 80
             ),
             "border_count": trial.suggest_int(
                 "border_count", 64, 255

@@ -72,7 +72,7 @@ class MLPCVTrainer:
         乱数シード。
     epochs : int, default 100
         エポック数。
-    early_stopping_rounds : int, default 10
+    early_stopping_rounds : int, default 20
         早期停止ラウンド数
     batch_size : int, default 256
         バッチサイズ。
@@ -86,12 +86,19 @@ class MLPCVTrainer:
         各層に適用するドロップアウト率。
     activation : nn.Module, default nn.ReLU
         活性化関数のクラス
+
+    Other Parameters
+    ----------------
+    hidden_dim1 : int, optional
+    hidden_dim2 : int, optional
+    hidden_dim3 : int, optional
+        各隠れ層のユニット数。"hidden_dims"を指定しない場合に有効。
     """
 
     def __init__(
-        self, n_splits=5, seed=42, epochs=100, early_stopping_rounds=10,
+        self, n_splits=5, seed=42, epochs=100, early_stopping_rounds=20,
         batch_size=256, lr=1e-3, use_gpu=True,
-        hidden_dims=[128, 64], dropout_rate=0.2, activation=nn.ReLU
+        hidden_dims=[128, 64], dropout_rate=0.2, activation=nn.ReLU, **kwargs
     ):
         self.n_splits = n_splits
         self.seed = seed
@@ -107,8 +114,15 @@ class MLPCVTrainer:
         self.oof_score = None
         self.early_stopping_rounds = early_stopping_rounds
         self.dropout_rate = dropout_rate
-        self.hidden_dims = hidden_dims
         self.activation = activation
+
+        if hidden_dims is not None:
+            self.hidden_dims = hidden_dims
+        else:
+            self.hidden_dims = [
+                v for k, v in sorted(kwargs.items())
+                if k.startswith("hidden_dim")
+            ]
 
     def fit(self, tr_df, test_df):
         """

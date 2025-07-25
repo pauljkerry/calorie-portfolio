@@ -60,7 +60,7 @@ def feature_engineering(train_data, test_data):
         inter_df[col_name] = num_df2[col1] * num_df2[col2]
 
     # === 2) targetをoofとの残差をbin分割したものにする ===
-    oof = np.load("../artifacts/oof/single/oof_single_3.npy")
+    oof = np.load("../artifacts/preds/base/oof_single_3.npy")
     residual = train_data["target"].values - oof
 
     bins = [-np.inf, -0.1, 0.1, np.inf]

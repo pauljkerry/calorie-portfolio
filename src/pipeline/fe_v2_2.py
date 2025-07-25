@@ -58,21 +58,17 @@ def feature_engineering(train_data, test_data):
     num_df2 = pd.concat([ohe_df, num_df1], axis=1)
 
     for col1, col2 in combinations(num_df2.columns, 2):
-        if "Sex" in col1 and "Sex" in col2:
-            continue
         col_name = f"{col1}_{col2}"
         inter_df2[col_name] = num_df2[col1] * num_df2[col2]
 
     for col1, col2, col3 in combinations(num_df2.columns, 3):
-        if "Sex" in col1 and "Sex" in col2:
-            continue
         col_name = f"{col1}_{col2}_{col3}"
         inter_df3[col_name] = num_df2[col1] * num_df2[col2]
 
     inter_df = pd.concat([inter_df2, inter_df3], axis=1)
 
     # === 2) targetをoofとの残差をbin分割したものにする ===
-    oof = np.load("../artifacts/oof/single/oof_single_3.npy")
+    oof = np.load("../artifacts/preds/base/oof_single_3.npy")
     residual = train_data["target"].values - oof
 
     bins = [-np.inf, -0.1, 0.1, np.inf]

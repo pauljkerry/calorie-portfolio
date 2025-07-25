@@ -68,8 +68,8 @@ def feature_engineering(train_data, test_data):
     inter_df = pd.concat([inter_df2, inter_df3], axis=1)
 
     # === 2) xgbの予測値を特徴量に追加
-    oof = np.load("../artifacts/oof/single/oof_single_3.npy")
-    test_preds = np.load("../artifacts/test_preds/single/test_single_3.npy")
+    oof = np.load("../artifacts/preds/base/oof_single_3.npy")
+    test_preds = np.load("../artifacts/preds/base/test_single_3.npy")
     xgb_preds = np.concatenate([oof, test_preds], axis=0)
 
     xgb_preds = pd.DataFrame(

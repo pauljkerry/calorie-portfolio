@@ -32,11 +32,12 @@ def create_objective(
     """
     def objective(trial):
         params = {
-            "learning_rate": 0.02,
+            "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.03),
             "max_depth": trial.suggest_int("max_depth", 3, 15),
-            "min_child_weight": trial.suggest_float("min_child_weight",
-                                                    5, 100),
-            "colsample_bytree": trial.suggest_float("colsample_bytree", 0.35, 0.85),
+            "min_child_weight": trial.suggest_float(
+                "min_child_weight", 5, 100),
+            "colsample_bytree": trial.suggest_float(
+                "colsample_bytree", 1.0, 1.0),
             "subsample": trial.suggest_float("subsample",
                                              0.5, 0.9),
             "reg_alpha": trial.suggest_float("reg_alpha",
