@@ -244,10 +244,7 @@ class XGBCVTrainer:
 
         test_preds = model.predict(dtest)
 
-        path = (
-            f"../artifacts/test_preds/"
-            f"full/test_full_{ID}.npy"
-        )
+        path = f"../artifacts/preds/l1/test_full_{ID}.npy"
         np.save(path, test_preds)
         print(f"Successfully saved test predictions to {path}")
 

@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset, TensorDataset
+from torch.optim.lr_scheduler import CosineAnnealingLR
 from sklearn.model_selection import KFold
 from sklearn.metrics import mean_squared_error
 import time
@@ -98,7 +99,7 @@ class MLPCVTrainer:
     def __init__(
         self, n_splits=5, seed=42, epochs=100, early_stopping_rounds=20,
         batch_size=256, lr=1e-3, use_gpu=True,
-        hidden_dims=[128, 64], dropout_rate=0.2, activation=nn.ReLU, **kwargs
+        hidden_dims=None, dropout_rate=0.2, activation=nn.ReLU, **kwargs
     ):
         self.n_splits = n_splits
         self.seed = seed
@@ -194,12 +195,7 @@ class MLPCVTrainer:
                 activation=self.activation
             ).to(self.device)
             optimizer = torch.optim.Adam(model.parameters(), lr=self.lr)
-            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-                optimizer,
-                mode='min',
-                factor=0.5,       # 学習率を半分に
-                patience=3        # val_rmseが3エポック改善しないと減衰
-            )
+            scheduler = CosineAnnealingLR(optimizer, T_max=30)
             criterion = nn.MSELoss(reduction="none")
 
             best_rmse = float("inf")
@@ -231,7 +227,7 @@ class MLPCVTrainer:
                         preds.append(pred)
                 val_pred = np.concatenate(preds)
                 val_rmse = np.sqrt(mean_squared_error(y_val, val_pred))
-                scheduler.step(val_rmse)
+                scheduler.step()
 
                 # train RMSE は10エポックごとにだけ計算
                 if (epoch + 1) % 10 == 0 or epoch == 0:
@@ -371,12 +367,7 @@ class MLPCVTrainer:
             activation=self.activation
         ).to(self.device)
         optimizer = torch.optim.Adam(model.parameters(), lr=self.lr)
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer,
-            mode='min',
-            factor=0.5,       # 学習率を半分に
-            patience=3        # val_rmseが3エポック改善しないと減衰
-        )
+        scheduler = CosineAnnealingLR(optimizer, T_max=40, eta_min=1e-7)
         criterion = nn.MSELoss(reduction="none")
 
         best_rmse = float("inf")
@@ -408,11 +399,11 @@ class MLPCVTrainer:
                     preds.append(pred)
             val_pred = np.concatenate(preds)
             val_rmse = np.sqrt(mean_squared_error(y_val, val_pred))
-            scheduler.step(val_rmse)
+            scheduler.step()
 
-            # train RMSE は10エポックごとにだけ計算
-            if (epoch + 1) % 10 == 0 or epoch == 0:
+            if (epoch + 1) % 1 == 0 or epoch == 0:
                 model.eval()
+                """
                 train_preds = []
                 train_targets = []
                 with torch.no_grad():
@@ -424,10 +415,11 @@ class MLPCVTrainer:
                 train_preds = np.concatenate(train_preds)
                 train_targets = np.concatenate(train_targets)
                 train_rmse = np.sqrt(mean_squared_error(train_targets, train_preds))
+                """
 
                 print(
                     f"Epoch {epoch+1}: "
-                    f"train_rmse = {train_rmse:.5f}, "
+                    # f"train_rmse = {train_rmse:.5f}, "
                     f"val_rmse = {val_rmse:.5f}"
                 )
 

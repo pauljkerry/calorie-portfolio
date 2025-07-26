@@ -41,9 +41,9 @@ def create_objective(
         trainer.early_stopping_rounds = early_stopping_rounds
         trainer.use_gpu = use_gpu
         trainer.batch_size = trial.suggest_int(
-            "batch_size", 128, 2048, step=32
+            "batch_size", 1024, 1024, step=32
         )
-        trainer.lr = trial.suggest_float("lr", 1e-3, 1e-2, log=True)
+        trainer.lr = trial.suggest_float("lr", 1e-5, 1e-4, log=True)
         trainer.dropout_rate = round(trial.suggest_float(
             "dropout_rate", 0, 0.15, step=0.01), 2)
 
@@ -56,8 +56,8 @@ def create_objective(
         }
         trainer.activation = activation_map[activation_str]()
 
-        dim1 = trial.suggest_int("hidden_dim1", 64, 512, step=32)
-        dim2 = trial.suggest_int("hidden_dim2", 32, dim1, step=32)
+        dim1 = trial.suggest_int("hidden_dim1", 512, 512, step=32)
+        dim2 = trial.suggest_int("hidden_dim2", 512, dim1, step=32)
         # dim3 = trial.suggest_int("hidden_dim3", 32, dim2, step=32)
         trainer.hidden_dims = [dim1, dim2]
 

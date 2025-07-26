@@ -65,7 +65,6 @@ class OptunaVisualizer:
         for i, t in enumerate(sorted_trials[:top_k]):
             print(f"=== Trial {t.number} ===")
             print(f"CV Score       : {t.value:.5f}")
-            print("Params:")
             print("params = {")
             for i, (k, v) in enumerate(t.params.items()):
                 comma = "," if i < len(t.params) - 1 else ""
