@@ -23,10 +23,8 @@ class XGBCVTrainer:
         KFoldの分割数。
     early_stopping_rounds : int, default 100
         早期停止ラウンド数。
-    seed : int, default 42 
+    seed : int, default 42
         乱数シード。
-    cat_cols : list, default None
-        カテゴリ変数のカラム名リスト。
     """
 
     def __init__(self, params=None, n_splits=5,
@@ -87,7 +85,6 @@ class XGBCVTrainer:
         test_preds : ndarray
             test_dfに対する予測配列
         """
-
         tr_df = tr_df.copy()
         test_df = test_df.copy()
 
@@ -332,7 +329,7 @@ class XGBCVTrainer:
 
 class XGBFoldModel:
     """
-    XGBoostのfold単位のモデルを保持するクラス。
+    XGBのfold単位のモデルを保持するクラス。
 
     Attributes
     ----------
@@ -361,7 +358,6 @@ class XGBFoldModel:
         sample : int, default 1000
             可視化に使用するサンプル数。
         """
-
         explainer = shap.TreeExplainer(self.model)
         shap_values = explainer(self.X_valid[:sample])
         shap.summary_plot(shap_values, self.X_valid[:sample])
@@ -370,7 +366,6 @@ class XGBFoldModel:
         """
         特徴量のTotalGainに基づく重要度を棒グラフで可視化する。
         """
-
         importances = self.model.get_score(importance_type="total_gain")
 
         total_gain = sum(importances.values())
@@ -414,7 +409,6 @@ class XGBFoldModel:
         path : str
             モデルを保存するパス。
         """
-
         joblib.dump(self.model, path)
 
     def load_model(self, path):

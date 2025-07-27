@@ -25,9 +25,9 @@ def feature_engineering(train_data, test_data):
 
     Notes
     -----
-    - logreg用
+    - Ridge用
     - 交互作用2ペア + 3ペア
-    - 33:33:33で分割
+    - 残差をtargetに
     """
     # 全データを結合（train + original + test）
     all_data = pd.concat(
@@ -90,7 +90,7 @@ def feature_engineering(train_data, test_data):
     tr_df = df_feat.iloc[:len(train_data)].copy()
     test_df = df_feat.iloc[len(train_data):]
 
-    # === target と weight を追加 ===
+    # === targetを追加 ===
     tr_df["target"] = residual
 
     return tr_df, test_df

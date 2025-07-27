@@ -1,5 +1,4 @@
 import optuna
-import torch.nn as nn
 from src.models.mlp.mlp_cv_trainer import MLPCVTrainer
 
 
@@ -7,9 +6,8 @@ def create_objective(
     tr_df,
     n_splits=5,
     epochs=100,
-    early_stopping_rounds=10,
+    early_stopping_rounds=20,
     use_gpu=True,
-    activation="ReLU"
 ):
     """
     Optunaの目的関数（objective）を生成する関数。
@@ -26,8 +24,6 @@ def create_objective(
         早期停止ラウンド数。
     use_gpu : bool, default True
         Trueの場合はGPUが使用可能であれば使用する。
-    activation : nn.Module, default ReLU
-        活性化関数のクラス
 
     Returns
     -------
@@ -35,32 +31,36 @@ def create_objective(
         Optunaで使用する目的関数。
     """
     def objective(trial):
-        trainer = MLPCVTrainer()
-        trainer.n_splits = n_splits
-        trainer.epochs = epochs
-        trainer.early_stopping_rounds = early_stopping_rounds
-        trainer.use_gpu = use_gpu
-        trainer.batch_size = trial.suggest_int(
-            "batch_size", 1024, 1024, step=32
+        hidden_dim1 = trial.suggest_int("hidden_dim1", 32, 256, step=32)
+        hidden_dim2 = trial.suggest_int(
+            "hidden_dim2", 32, hidden_dim1, step=32
         )
-        trainer.lr = trial.suggest_float("lr", 1e-5, 1e-4, log=True)
-        trainer.dropout_rate = round(trial.suggest_float(
-            "dropout_rate", 0, 0.15, step=0.01), 2)
-
-        activation_str = trial.suggest_categorical(
-            "activation", [activation])
-        activation_map = {
-            "ReLU": nn.ReLU,
-            "Tanh": nn.Tanh,
-            "LeakyRelu": nn.LeakyReLU
+        params = {
+            "n_splits": n_splits,
+            "epochs": epochs,
+            "early_stopping_rounds": early_stopping_rounds,
+            "use_gpu": use_gpu,
+            "batch_size": trial.suggest_int(
+                "batch_size", 32, 128, step=32
+            ),
+            "lr": trial.suggest_float("lr", 1e-5, 1e-2, log=True),
+            "dropout_rate": round(trial.suggest_float(
+                "dropout_rate", 0, 0.3, step=0.05), 2),
+            "activation": trial.suggest_categorical("activation", [
+                "ReLU",
+                "Tanh",
+                "LeakyReLU",
+                "ELU",
+                "GELU",
+                "SiLU",
+                "Sigmoid"
+            ]),
+            "hidden_dim1": hidden_dim1,
+            "hidden_dim2": hidden_dim2
+            # dim3 = trial.suggest_int("hidden_dim3", 32, dim2, step=32)
         }
-        trainer.activation = activation_map[activation_str]()
 
-        dim1 = trial.suggest_int("hidden_dim1", 512, 512, step=32)
-        dim2 = trial.suggest_int("hidden_dim2", 512, dim1, step=32)
-        # dim3 = trial.suggest_int("hidden_dim3", 32, dim2, step=32)
-        trainer.hidden_dims = [dim1, dim2]
-
+        trainer = MLPCVTrainer(**params)
         trainer.fit_one_fold(tr_df, fold=0)
 
         return trainer.fold_scores[0]

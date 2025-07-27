@@ -212,7 +212,7 @@ class RidgeFoldModel:
     y_val : cudf.Series
         検証用のターゲットラベル。
     fold_index : int
-        Foldの番号。
+        foldの番号。
     """
 
     def __init__(self, model, X_val, y_val, fold):

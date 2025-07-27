@@ -36,7 +36,7 @@ class SimpleMLP(nn.Module):
         for hidden_dim in hidden_dims:
             layers.append(nn.Linear(prev_dim, hidden_dim))
             layers.append(nn.BatchNorm1d(hidden_dim))
-            layers.append(nn.ReLU())
+            layers.append(activation())
             layers.append(nn.Dropout(dropout_rate))
             prev_dim = hidden_dim
 
@@ -85,8 +85,16 @@ class MLPCVTrainer:
         各隠れ層のユニット数。
     dropout_rate : float, default 0.2
         各層に適用するドロップアウト率。
-    activation : nn.Module, default nn.ReLU
+    activation : str, default "ReLU"
         活性化関数のクラス
+    log_interval : int, default 1
+        scoreのログの表示頻度
+    t_max : int, default 50
+        CosineAnnealingLRにおける最大エポック数
+    eta_min : float, default 1e-6
+        CosineAnnealingLRにおける最小学習率
+    min_epochs : int, default 50
+        最低限学習するエポック数
 
     Other Parameters
     ----------------
@@ -98,8 +106,9 @@ class MLPCVTrainer:
 
     def __init__(
         self, n_splits=5, seed=42, epochs=100, early_stopping_rounds=20,
-        batch_size=256, lr=1e-3, use_gpu=True,
-        hidden_dims=None, dropout_rate=0.2, activation=nn.ReLU, **kwargs
+        batch_size=256, lr=1e-3, use_gpu=True, hidden_dims=None,
+        dropout_rate=0.2, activation="ReLU", log_interval=1,
+        t_max=50, eta_min=1e-6, min_epochs=50, **kwargs
     ):
         self.n_splits = n_splits
         self.seed = seed
@@ -115,7 +124,10 @@ class MLPCVTrainer:
         self.oof_score = None
         self.early_stopping_rounds = early_stopping_rounds
         self.dropout_rate = dropout_rate
-        self.activation = activation
+        self.log_interval = log_interval
+        self.t_max = t_max
+        self.eta_min = eta_min
+        self.min_epochs = min_epochs
 
         if hidden_dims is not None:
             self.hidden_dims = hidden_dims
@@ -124,6 +136,17 @@ class MLPCVTrainer:
                 v for k, v in sorted(kwargs.items())
                 if k.startswith("hidden_dim")
             ]
+
+        ACTIVATION_MAPPING = {
+            "ReLU": nn.ReLU,
+            "LeakyReLU": nn.LeakyReLU,
+            "ELU": nn.ELU,
+            "GELU": nn.GELU,
+            "SiLU": nn.SiLU,
+            "Tanh": nn.Tanh,
+            "Sigmoid": nn.Sigmoid,
+        }
+        self.activation = ACTIVATION_MAPPING[activation]
 
     def fit(self, tr_df, test_df):
         """
@@ -195,7 +218,11 @@ class MLPCVTrainer:
                 activation=self.activation
             ).to(self.device)
             optimizer = torch.optim.Adam(model.parameters(), lr=self.lr)
-            scheduler = CosineAnnealingLR(optimizer, T_max=30)
+            scheduler = CosineAnnealingLR(
+                optimizer,
+                T_max=self.t_max,
+                eta_min=self.eta_min
+            )
             criterion = nn.MSELoss(reduction="none")
 
             best_rmse = float("inf")
@@ -229,8 +256,7 @@ class MLPCVTrainer:
                 val_rmse = np.sqrt(mean_squared_error(y_val, val_pred))
                 scheduler.step()
 
-                # train RMSE は10エポックごとにだけ計算
-                if (epoch + 1) % 10 == 0 or epoch == 0:
+                if (epoch + 1) % self.log_interval == 0 or epoch == 0:
                     model.eval()
                     train_preds = []
                     train_targets = []
@@ -242,23 +268,38 @@ class MLPCVTrainer:
                             train_targets.append(yb.numpy())
                     train_preds = np.concatenate(train_preds)
                     train_targets = np.concatenate(train_targets)
-                    train_rmse = np.sqrt(mean_squared_error(train_targets, train_preds))
+                    train_rmse = np.sqrt(
+                        mean_squared_error(train_targets, train_preds)
+                    )
 
                     print(
                         f"Epoch {epoch+1}: "
-                        f"train_rmse = {train_rmse:.5f}, "
-                        f"val_rmse = {val_rmse:.5f}"
+                        f"Train RMSE = {train_rmse:.5f}, "
+                        f"Val RMSE = {val_rmse:.5f}"
                     )
 
                 if val_rmse < best_rmse:
                     best_rmse = val_rmse
-                    best_model_state = model.state_dict()
+                    best_model_state = {
+                        k: v.cpu().clone() for k, v
+                        in model.state_dict().items()
+                    }
                     best_epoch = epoch + 1
-                elif epoch - best_epoch >= self.early_stopping_rounds:
+                    print(
+                        f"New best model saved at epoch {epoch+1}, "
+                        f"RMSE: {val_rmse:.5f}")
+                elif (
+                    (epoch - best_epoch >= self.early_stopping_rounds) and
+                    (epoch + 1 >= self.min_epochs)
+                ):
                     print(f"Early stopping at epoch {epoch+1}")
+                    print(f"Loading best model from epoch {best_epoch} "
+                          f"with RMSE {best_rmse:.5f}")
                     break
 
-            model.load_state_dict(best_model_state)
+            model.load_state_dict(
+                {k: v.to(self.device) for k, v in best_model_state.items()}
+            )
             self.fold_models.append(MLPFoldModel(
                 model,
                 X_val,
@@ -367,7 +408,11 @@ class MLPCVTrainer:
             activation=self.activation
         ).to(self.device)
         optimizer = torch.optim.Adam(model.parameters(), lr=self.lr)
-        scheduler = CosineAnnealingLR(optimizer, T_max=40, eta_min=1e-7)
+        scheduler = CosineAnnealingLR(
+            optimizer,
+            T_max=self.t_max,
+            eta_min=self.eta_min
+        )
         criterion = nn.MSELoss(reduction="none")
 
         best_rmse = float("inf")
@@ -403,7 +448,7 @@ class MLPCVTrainer:
 
             if (epoch + 1) % 1 == 0 or epoch == 0:
                 model.eval()
-                """
+
                 train_preds = []
                 train_targets = []
                 with torch.no_grad():
@@ -414,24 +459,40 @@ class MLPCVTrainer:
                         train_targets.append(yb.numpy())
                 train_preds = np.concatenate(train_preds)
                 train_targets = np.concatenate(train_targets)
-                train_rmse = np.sqrt(mean_squared_error(train_targets, train_preds))
-                """
+                train_rmse = np.sqrt(
+                    mean_squared_error(train_targets, train_preds)
+                )
 
                 print(
                     f"Epoch {epoch+1}: "
-                    # f"train_rmse = {train_rmse:.5f}, "
-                    f"val_rmse = {val_rmse:.5f}"
+                    f"Train RMSE = {train_rmse:.5f}, "
+                    f"Val RMSE = {val_rmse:.5f}"
                 )
 
             if val_rmse < best_rmse:
                 best_rmse = val_rmse
                 best_model_state = model.state_dict()
+                best_model_state = {
+                    k: v.cpu().clone() for k, v
+                    in model.state_dict().items()
+                }
+                print(
+                    f"New best model saved at epoch {epoch+1}, "
+                    f"RMSE: {val_rmse:.5f}")
                 best_epoch = epoch + 1
-            elif epoch - best_epoch >= self.early_stopping_rounds:
+            elif (
+                (epoch - best_epoch >= self.early_stopping_rounds) and
+                (epoch + 1 >= self.min_epochs)
+            ):
                 print(f"Early stopping at epoch {epoch+1}")
+                print(
+                    f"Loading best model from epoch {best_epoch} "
+                    f"with RMSE {best_rmse:.5f}")
                 break
 
-        model.load_state_dict(best_model_state)
+        model.load_state_dict(
+            {k: v.to(self.device) for k, v in best_model_state.items()}
+        )
 
         end = time.time()
         print_duration(start, end)
@@ -460,7 +521,7 @@ class MLPFoldModel:
     y_val : pd.Series
         検証用のターゲットラベル。
     fold_index : int
-        Foldの番号。
+        foldの番号。
     best_rounds : int
         最良スコア時のエポック数
     """
@@ -481,7 +542,6 @@ class MLPFoldModel:
         path : str
             モデルを保存するパス。
         """
-
         joblib.dump(self.model, path)
 
     def load_model(self, path):

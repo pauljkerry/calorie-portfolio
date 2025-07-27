@@ -24,7 +24,8 @@ def feature_engineering(train_data, test_data):
 
     Notes
     -----
-    - logreg用
+    - LogReg用
+    - 残差が正の外れ値, 負の外れ値 or not 外れ値 の3値分類
     """
     # 全データを結合（train + original + test）
     all_data = pd.concat(

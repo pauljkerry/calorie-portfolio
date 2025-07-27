@@ -23,7 +23,7 @@ class LGBMCVTrainer:
         KFoldの分割数。
     early_stopping_rounds : int, default 100
         早期停止ラウンド数。
-    seed : int, default 42 
+    seed : int, default 42
         乱数シード。
     """
 
@@ -353,7 +353,7 @@ class LGBMFoldModel:
     evals_result : dict
         学習過程の評価結果。
     fold_index : int
-        Foldの番号。
+        foldの番号。
     """
 
     def __init__(self, model, X_val, y_val, fold_index):

@@ -6,7 +6,7 @@ from sklearn.metrics import mean_squared_error
 
 def create_objective(oof_list):
     """
-    oofの最適な重みを探索する目的関数を作る。
+    Optunaの目的関数（objective）を生成する関数。
 
     Parameters
     ----------
@@ -18,23 +18,16 @@ def create_objective(oof_list):
     objective : function
         optunaで使う目的関数
     """
-    train_data = pd.read_parquet("../artifacts/prepro/train_data.parquet")
+    train_data = pd.read_parquet("../artifacts/prepro/train_data1.parquet")
     y_true = train_data["target"].to_numpy()
     n_models = len(oof_list)
 
     def objective(trial):
-        weights = []
-        total = 0.0
+        raw_weights = [trial.suggest_float(f"raw_w{i}", 0.0, 1.0)
+                       for i in range(n_models)]
+        weight_sum = sum(raw_weights)
+        weights = [w / weight_sum for w in raw_weights]  # 正規化
 
-        for i in range(n_models - 1):
-            w = trial.suggest_float(f"w{i}", 0.0, 1.0 - total)
-            weights.append(w)
-            total += w
-
-        # 最後の1つは1から引いた残り
-        weights.append(1.0 - total)
-
-        # 加重平均をとる
         y_pred = sum(w * oof for w, oof in zip(weights, oof_list))
         rmse = np.sqrt(mean_squared_error(y_true, y_pred))
         return rmse

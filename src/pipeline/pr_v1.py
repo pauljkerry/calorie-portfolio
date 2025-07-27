@@ -22,7 +22,7 @@ def preprocessing(train_data, test_data):
 
     Notes
     -----
-    - id 列を削除
+    - id列を削除
     - 特徴量名をリネーム
     """
     all_data = pd.concat([train_data, test_data])

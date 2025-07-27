@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 
-def create_sub(test_proba, path="../output/sub_vn.csv"):
+def create_sub(preds, ID):
     """
     Kaggleの提出用のフォーマットに整形する関数。
 
@@ -10,13 +10,13 @@ def create_sub(test_proba, path="../output/sub_vn.csv"):
     ----------
     test_proba : np.ndarray
         各ラベルについての予測値の配列。
-    path : str
-        保存先のpath
+    ID : str
+        ファイルの識別子
     """
-    preds = np.expm1(test_proba)
+    preds_exp = np.expm1(preds)
     sub_df = pd.DataFrame({
-        "id": np.arange(750000, 750000 + len(test_proba)),
-        "Calories": preds
+        "id": np.arange(750000, 750000 + len(preds)),
+        "Calories": preds_exp
     })
-    sub_df.to_csv(path, index=False)
-    print(f"Saved model successfully to {path}!")
+    sub_df.to_csv(f"../output/submission_{ID}.csv", index=False)
+    print("Saved submission file successfully!")

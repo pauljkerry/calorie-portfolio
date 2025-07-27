@@ -24,7 +24,7 @@ def feature_engineering(train_data, test_data):
     Notes
     -----
     - targetは残差
-    - gbdt用
+    - GBDT用
     """
     # 全データを結合（train + original + test）
     all_data = pd.concat(

@@ -24,9 +24,9 @@ def preprocessing(train_data, test_data):
 
     Notes
     -----
-    - id 列を削除
+    - id列を削除
     - 特徴量名をリネーム
-    - 主成分分析で相関係数が高いものどうしを圧縮
+    - 主成分分析で相関係数が高いもの同士を圧縮
     """
     all_data = pd.concat([train_data, test_data])
     all_data = all_data.drop("id", axis=1)
@@ -38,7 +38,7 @@ def preprocessing(train_data, test_data):
     all_data["target"] = np.log1p(all_data["target"])
 
     # 主成分分析による次元圧縮
-    pca_cols1 = ["Duration", "Heart_Rate", "Body_Temp"] 
+    pca_cols1 = ["Duration", "Heart_Rate", "Body_Temp"]
     pca_cols2 = ["Height", "Weight"]
 
     scaler1 = StandardScaler()
@@ -62,7 +62,7 @@ def preprocessing(train_data, test_data):
 
     # PCAカラム追加
     all_data = pd.concat([all_data.reset_index(drop=True), pca_df1, pca_df2], axis=1)
-    
+
     tr_df = all_data.iloc[:len(train_data)]
     test_df = all_data.iloc[len(train_data):]
 

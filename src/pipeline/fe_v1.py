@@ -23,6 +23,7 @@ def feature_engineering(train_data, test_data):
 
     Notes
     -----
+    - GBDT用
     - 特徴量エンジニアリングはせず
     """
     # 全データを結合（train + original + test）

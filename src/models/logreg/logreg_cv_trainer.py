@@ -10,7 +10,7 @@ from src.utils.print_duration import print_duration
 
 class LogRegCVTrainer:
     """
-    Logregを使ったGPUでのCVトレーナー。
+    LogRegを使ったGPUでのCVトレーナー。
 
     Attributes
     ----------
@@ -231,7 +231,6 @@ class LogRegFoldModel:
         path : str
             モデルを保存するパス。
         """
-
         joblib.dump(self.model, path)
 
     def load_model(self, path):

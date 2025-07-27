@@ -1,6 +1,5 @@
 import optuna
 import optuna.visualization as vis
-import pandas as pd
 
 
 class OptunaVisualizer:
@@ -70,47 +69,3 @@ class OptunaVisualizer:
                 comma = "," if i < len(t.params) - 1 else ""
                 print(f'    "{k}": {v}{comma}')
             print("}")
-
-    def summarize_studies(self):
-        """
-        各studyの概要を表示
-
-        Returns
-        -------
-        df : pd.DataFrame
-            概要のdf
-
-        Notes
-        -----
-        - StudyName
-        - トライアル数
-        - 最良のスコア
-        - 最適化の方向
-        - 実験開始時の日時
-        """
-        summaries = optuna.study.get_all_study_summaries(storage=self.storage_path)
-
-        data = []
-        for s in summaries:
-            best_score = s.best_trial.value if s.best_trial else None
-            data.append({
-                "study_name": s.study_name,
-                "n_trials": s.n_trials,
-                "best_score": best_score,
-                "direction": s.direction.name,
-                "datetime_start": s.datetime_start.strftime("%Y-%m-%d %H:%M:%S") if s.datetime_start else None
-            })
-
-        df = pd.DataFrame(data).sort_values("best_score", ascending=False)
-        return df
-
-    def get_best_params(self):
-        """
-        最良のパラメータの取得
-
-        Returns
-        -------
-        best_params : dict
-            最良のtrialのパラメータ
-        """
-        return self.study.best_params

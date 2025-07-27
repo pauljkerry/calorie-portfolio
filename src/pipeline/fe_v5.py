@@ -25,9 +25,9 @@ def feature_engineering(train_data, test_data):
 
     Notes
     -----
-    - logreg用
+    - LogReg用
     - 交互作用2ペア + 3ペア
-    - 33:33:33で分割
+    - 残差で33:33:33に分割
     """
     # 全データを結合（train + original + test）
     all_data = pd.concat(

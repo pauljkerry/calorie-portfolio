@@ -3,8 +3,6 @@ from sklearn.model_selection import KFold
 from sklearn.metrics import mean_squared_error
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 import shap
 import joblib
 import time
@@ -12,6 +10,21 @@ from src.utils.print_duration import print_duration
 
 
 class CBCVTrainer:
+    """
+    CBを使ったCVトレーナー。
+
+    Attributes
+    ----------
+    params : dict
+        CBのパラメータ。
+    n_splits : int, default 5
+        KFoldの分割数。
+    early_stopping_rounds : int, default 100
+        早期停止ラウンド数。
+    seed : int, default 42
+        乱数シード。
+    """
+
     def __init__(self, params=None, n_splits=5,
                  early_stopping_rounds=100, seed=42):
         self.params = params or {}
@@ -23,6 +36,14 @@ class CBCVTrainer:
         self.oof_score = None
 
     def get_default_params(self):
+        """
+        CB用のデフォルトパラメータを返す。
+
+        Returns
+        -------
+        default_params : dict
+            デフォルトパラメータの辞書。
+        """
         default_params = {
             "loss_function": "RMSE",
             "eval_metric": "RMSE",
@@ -45,6 +66,23 @@ class CBCVTrainer:
         return default_params
 
     def fit(self, tr_df, test_df):
+        """
+        CVを用いてモデルを学習し、OOF予測とtest_dfの平均予測を返す。
+
+        Parameters
+        ----------
+        tr_df : pd.DataFrame
+            学習用データ。
+        test_df : pd.DataFrame
+            テスト用データ。
+
+        Returns
+        -------
+        oof_preds : ndarray
+            OOF予測配列
+        test_preds : ndarray
+            test_dfに対する予測配列
+        """
         tr_df = tr_df.copy()
         test_df = test_df.copy()
 
@@ -144,7 +182,20 @@ class CBCVTrainer:
 
         return oof_preds, test_preds
 
-    def full_train(self, tr_df, test_df, iterations):
+    def full_train(self, tr_df, test_df, ID, level="l1"):
+        """
+        訓練データ全体でモデルを学習し、test_dfに対する予測結果をnpy形式で保存する。
+
+        Parameters
+        tr_df : pd.DataFrame
+            学習用データ。
+        test_df : pd.DataFrame
+            テスト用データ。
+        ID : str
+            保存ファイル名に付加する識別子。
+        level : str
+            保存するフォルダ名。
+        """
         tr_df = tr_df.copy()
         test_df = test_df.copy()
 
@@ -174,7 +225,6 @@ class CBCVTrainer:
 
         model.fit(
             train_pool,
-            iterations=int(iterations * 1.25),
             use_best_model=True
         )
 
@@ -186,10 +236,24 @@ class CBCVTrainer:
                 model, None, None, None
             ))
 
-        test_preds = model.predict_proba(test_df)
-        return test_preds
+        test_preds = model.predict(test_df)
+
+        path = f"../artifacts/preds/{level}/test_full_{ID}.npy"
+        np.save(path, test_preds)
+        print(f"Successfully saved test predictions to {path}")
 
     def fit_one_fold(self, tr_df, fold=0):
+        """
+        指定した1つのfoldのみを用いてモデルを学習する。
+        主にOptunaによるハイパーパラメータ探索時に使用。
+
+        Parameters
+        ----------
+        tr_df : pd.DataFrame
+            学習用データ。
+        fold : int
+            学習に使うfold番号。
+        """
         tr_df = tr_df.copy()
 
         if "weight" in tr_df.columns:
@@ -258,6 +322,21 @@ class CBCVTrainer:
 
 
 class CBFoldModel:
+    """
+    CatBoostのfold単位のモデルを保持するクラス。
+
+    Attributes
+    ----------
+    model : catboost.CatBoostRegressor
+        学習済みのCatBoostモデル。
+    X_val : pd.DataFrame
+        検証用の特徴量データ。
+    y_val : pd.Series
+        検証用のターゲットラベル。
+    fold_index : int
+        Foldの番号。
+    """
+
     def __init__(self, model, X_val, y_val, fold_index):
         self.model = model
         self.X_val = X_val
@@ -265,47 +344,42 @@ class CBFoldModel:
         self.fold_index = fold_index
 
     def shap_plot(self, sample=1000):
+        """
+        SHAPを用いた特徴量の重要度の可視化を行う。
+
+        Parameters
+        ----------
+        sample : int, default 1000
+            可視化に使用するサンプル数。
+        """
         explainer = shap.TreeExplainer(self.model)
         shap_values = explainer(self.X_val[:sample])
         shap.summary_plot(shap_values, self.X_val[:sample], max_display=100)
 
-    def plot_gain_importance(self):
-        importances = self.model.get_feature_importance(type="Gain")
-
-        total_gain = importances.sum()
-        importance_ratios = np.round((importances / total_gain) * 100, 2)
-        df = pd.DataFrame({
-            "Feature": self.model.feature_names_,
-            "ImportanceRatio": importance_ratios
-        }).sort_values("ImportanceRatio", ascending=False)
-
-        fig, ax = plt.subplots(figsize=(12, max(4, len(df)*0.4)))
-
-        sns.barplot(
-            data=df,
-            y="Feature",
-            x="ImportanceRatio",
-            orient="h",
-            palette="viridis",
-            hue="Feature",
-            ax=ax
-        )
-        for container in ax.containers:
-            labels = ax.bar_label(container)
-            for label in labels:
-                label.set_fontsize(20)
-
-        plt.title("Feature Importance", fontsize=32)
-        plt.xlabel("Importance", fontsize=28)
-        plt.ylabel("Feature", fontsize=28)
-        ax.tick_params(axis="x", labelsize=20)
-        ax.tick_params(axis="y", labelsize=20)
-
-        plt.tight_layout()
-
     def save_model(self, path="../artifacts/model/cb_vn.pkl"):
+        """
+        学習済みモデルを指定パスに保存する。
+
+        Parameters
+        ----------
+        path : str
+            モデルを保存するパス。
+        """
         joblib.dump(self.model, path)
 
     def load_model(self, path):
+        """
+        指定されたパスからモデルを読み込む。
+
+        Parameters
+        ----------
+        path : str
+            モデルファイルのパス。
+
+        Returns
+        -------
+        self : CBFoldModel
+            読み込んだモデルを保持するインスタンス自身を返す。
+        """
         self.model = joblib.load(path)
         return self
