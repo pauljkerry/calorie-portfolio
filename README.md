@@ -66,10 +66,7 @@ project/
 │   ├── models/                # 各モデルのCV・Optunaコード
 │   ├── pipeline/              # 特徴量作成や前処理
 │   └── utils/                 # 汎用関数、通知など
-├── artifacts/                 # 生成された特徴量・予測結果・前処理済みデータ
-├── input/                     # 提供されたデータ
-├── output/                    # 提出用CSV
-├── .env                       # 環境変数ファイル（※中身はGit管理外）
+├── .env.template              # 環境変数ファイル（※中身はダミー）
 └── README.md                  # 説明書
 ```
 
