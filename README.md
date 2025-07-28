@@ -7,24 +7,44 @@
 5. [実験結果](#実験結果)
 
 ## 1. コンペ概要
-- **コンペ名**: [Kaggle Playground Series - S5E6](https://www.kaggle.com/competitions/playground-series-s5e6)
-- **タスク**: 多クラス分類
-- **評価指標**: Map@3
-- **最終スコア**: 0.35138
-- **最終順位**: 707位 / 2648チーム中
-- **コンペ終了後の改善結果**: 0.36485(510位相当)
+- **コンペ名**: [Kaggle Playground Series - S5E5](https://www.kaggle.com/competitions/playground-series-s5e5)
+- **タスク**: 回帰
+- **評価指標**: RMSLE
+- **参加タイミング**: コンペ終了後に参加（Late Submission）
+- **Privateスコア**: 0.05852
+- **順位相当**: 24位 / 4316チーム中（上位 0.55%）
 
 ## 2. 環境
 ### 使用言語・主要ライブラリ
 
+### ▶ MLP（PyTorch）実行環境
+
+| パッケージ名   | バージョン  |
+|---------------|------------|
+| Python        | 3.11.13    |
+| PyTorch       | 2.2.0      |
+| torchvision   | 0.17.0     |
+| scikit-learn  | 1.6.1      |
+| CUDA          | 12.1       |
+| numpy         | 1.26.4     |
+| pandas        | 2.2.3      |
+| optuna        | 4.4.0      |
+
+### ▶ その他の実行環境
+
 | パッケージ名          | バージョン  |
 |----------------------|------------|
 | Python               | 3.10       |
-| pandas               | 2.2.3      |
-| numpy                | 2.1.3      |
-| scikit-learn         | 1.6.1      |
 | XGBoost              | 3.0.2      |
 | LightGBM             | 4.6.0      |
+| CatBoost             | 1.2.8      |
+| scikit-learn         | 1.7.0      |
+| CUDA                 | 11.8       |
+| cuDF                 | 23.12.01   |
+| cuML                 | 23.12.00   |
+| CuPy                 | 13.4.1     |
+| numpy                | 2.1.3      |
+| pandas               | 2.2.3      |
 | optuna               | 4.4.0      |
 | matplotlib           | 3.10.0     |
 | seaborn              | 0.13.2     |
@@ -33,48 +53,24 @@
 ### 環境変数
 | 変数名  | 説明       | 例            |
 |--------|-------------------|---------------|
-| `OPTUNA_STORAGE_URL` | Optuna が使用する PostgreSQL の接続 URL  | `postgresql://user:pass@localhost:5432/db`  |
+| `OPTUNA_STORAGE_URL` | Optunaが使用するPostgreSQLの接続 URL  | `postgresql://user:pass@localhost:5432/db`  |
+|`TELEGRAM_CHAT_ID`|Telegram 通知を送る先のチャット ID| `1234567890` |
+|`TELEGRAM_TOKEN`|Telegram BotのAPIトークン|`123456789:AAExampleTokenGoesHere`|
 
 ## 3. ディレクトリ構成
 
 ```text
-.
-├── README.md
-├── summary.md
-├── notebooks
-│   ├── 01_eda.ipynb
-│   ├── 02_pre.ipynb
-│   ├── 03_xgb_analysis.ipynb
-│   ├── 04_xgb_tuning.ipynb
-│   ├── 05_lgb_analysis.ipynb
-│   ├── 06_lgb_tuning.ipynb
-│   └── 07_ensemble.ipynb
-└── src
-    ├── __init__.py
-    ├── models
-    │   ├── __init__.py
-    │   ├── lgbm
-    │   │   ├── __init__.py
-    │   │   ├── lgbm_cv_trainer.py        ← LGBMのCV学習用
-    │   │   ├── lgbm_ensemble.py          ← LGBMのアンサンブル処理
-    │   │   └── lgbm_optuna_optimizer.py  ← Optunaでのパラメータ探索
-    │   └── xgb
-    │       ├── __init__.py               
-    │       ├── xgb_cv_trainer.py         ← XGBのCV学習用
-    │       ├── xgb_ensemble.py           ← XGBのアンサンブル処理
-    │       └── xgb_optuna_optimizer.py   ← Optunaでのパラメータ探索
-    ├── pipeline
-    │   ├── __init__.py
-    │   ├── fe_gbdt_v4.py  ← コンペ終了後に改善したFEファイル
-    │   ├── fe_gbdt_v5.py  ← 提出に使ったFEファイル
-    │   └── prepro.py
-    └── utils
-        ├── __init__.py
-        ├── create_sub.py
-        ├── eda.py         ← EDAの可視化関数をまとめたファイル
-        ├── map_k.py
-        ├── optuna_visualizer.py
-        └── weight_optimizer.py
+project/
+├── notebooks/                 # Jupyterノート群（EDA, Tuning, 分析など）
+├── src/                       # モデル・パイプライン・ユーティリティ群
+│   ├── models/                # 各モデルのCV・Optunaコード
+│   ├── pipeline/              # 特徴量作成や前処理
+│   └── utils/                 # 汎用関数、通知など
+├── artifacts/                 # 生成された特徴量・予測結果・前処理済みデータ
+├── input/                     # 提供されたデータ
+├── output/                    # 提出用CSV
+├── .env                       # 環境変数ファイル（※中身はGit管理外）
+└── README.md                  # 説明書
 ```
 
 ## 4. 学びと課題
@@ -86,4 +82,4 @@
 ## 5. 実験結果
 Optunaによるハイパーパラメータ探索の詳細結果は、以下のNotionページでご覧いただけます。
 
- [Notionリンク](https://www.notion.so/Fertilizer-port-folio-22efeb435b0180c18267fb6f5f373307?source=copy_link)
+ [Notionリンク](https://www.notion.so/Calorie-portfolio-23dfeb435b01809390a2e5a02625d819?source=copy_link)
