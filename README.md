@@ -77,6 +77,12 @@ project/
  [学びと課題](./summary.md)
 
 ## 5. 実験結果
-Optunaによるハイパーパラメータ探索の詳細結果は、以下のNotionページでご覧いただけます。
 
- [Notionリンク](https://www.notion.so/Calorie-portfolio-23dfeb435b01809390a2e5a02625d819?source=copy_link)
+Optuna によるハイパーパラメータ探索の詳細結果は、以下の Notion ページにまとめています。
+
+🔗 [Notionリンク](https://www.notion.so/Calorie-portfolio-23dfeb435b01809390a2e5a02625d819?source=copy_link)
+
+また、Airtable にも実験結果を整理しています。  
+ただし、`Prediction`テーブルの`ID`はこのリポジトリ内のノートブックとは1対1対応していません。各`ID`がどのノートブックに対応するかは、上記のNotionページにてご確認ください。
+
+🔗 [Airtableリンク](https://airtable.com/appAF5L1smSugZcL3/shrnBdFydi5ZcSd7U)
